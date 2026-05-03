@@ -1,0 +1,52 @@
+{
+  "id": "03_100M",
+  "title": "100m先こそ叩きたくなる",
+  "sources": {
+    "raw_podcast": "/Users/knoxv/Documents/Claude/Projects/video-use-test/source-podcast/IMG_6372.MOV"
+  },
+  "ranges": [
+    {"start": 2094.34, "end": 2106.66}
+  ],
+  "composition": "center_crop",
+  "cold_open": {
+    "text": "100m先を走る奴\nを叩いてないか",
+    "font": "Hiragino Sans W6",
+    "size_pt": 70,
+    "bg_color": "#000000",
+    "text_color": "#FFFFFF",
+    "duration_s": 2.0
+  },
+  "audio": {
+    "bgm": {
+      "prompt": "solemn classical strings, dramatic building tension, moderate tempo",
+      "duration_ms": 12213,
+      "output_path": "publishing/audio/bgm/03_100M.mp3"
+    },
+    "sfx_track": [
+      {
+        "time_s": 0.0,
+        "desc": "paper flip with reverb intimate",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/03_100M_t00.mp3"
+      },
+      {
+        "time_s": 2.0,
+        "desc": "airy gust whoosh transition",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/03_100M_t02.mp3"
+      },
+      {
+        "time_s": 4.0,
+        "desc": "hollow chime warm anchor",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/03_100M_t04.mp3"
+      },
+      {
+        "time_s": 6.0,
+        "desc": "subtle bass thump glitch interrupt",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/03_100M_t06.mp3"
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kakumei.postmonitor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__ROOT__/publishing/scripts/run_monitor.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHON</key>
+        <string>__PYTHON__</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>__ROOT__/publishing/scripts/logs/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__ROOT__/publishing/scripts/logs/launchd.err.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

@@ -1,0 +1,58 @@
+{
+  "id": "04_OHTANI",
+  "title": "嘲笑を超えた男",
+  "sources": {
+    "raw_podcast": "/Users/knoxv/Documents/Claude/Projects/video-use-test/source-podcast/IMG_6372.MOV"
+  },
+  "ranges": [
+    {"start": 1909.00, "end": 1923.98}
+  ],
+  "composition": "center_crop",
+  "cold_open": {
+    "text": "なぜ大谷に\n誰も嫉妬しない？",
+    "font": "Hiragino Sans W6",
+    "size_pt": 70,
+    "bg_color": "#000000",
+    "text_color": "#FFFFFF",
+    "duration_s": 2.0
+  },
+  "audio": {
+    "bgm": {
+      "prompt": "warm strings with horn, inspiring slow build, contemplative classical",
+      "duration_ms": 13987,
+      "output_path": "publishing/audio/bgm/04_OHTANI.mp3"
+    },
+    "sfx_track": [
+      {
+        "time_s": 0.0,
+        "desc": "metallic chime intimate attention hook",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/04_OHTANI_t00.mp3"
+      },
+      {
+        "time_s": 2.0,
+        "desc": "digital pop transition signal",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/04_OHTANI_t02.mp3"
+      },
+      {
+        "time_s": 4.0,
+        "desc": "soft muted thud anchor warm",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/04_OHTANI_t04.mp3"
+      },
+      {
+        "time_s": 6.0,
+        "desc": "glitch pop subtle interrupt",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/04_OHTANI_t06.mp3"
+      },
+      {
+        "time_s": 8.0,
+        "desc": "magic shimmer sparkle awareness peak",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/04_OHTANI_t08.mp3"
+      }
+    ]
+  }
+}

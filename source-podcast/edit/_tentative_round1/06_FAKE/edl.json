@@ -1,0 +1,58 @@
+{
+  "id": "06_FAKE",
+  "title": "偽物に偽物を重ねるな",
+  "sources": {
+    "raw_podcast": "/Users/knoxv/Documents/Claude/Projects/video-use-test/source-podcast/IMG_6372.MOV"
+  },
+  "ranges": [
+    {"start": 1734.38, "end": 1747.46}
+  ],
+  "composition": "center_crop",
+  "cold_open": {
+    "text": "SNSの嫉妬は\n全部意味ない",
+    "font": "Hiragino Sans W6",
+    "size_pt": 70,
+    "bg_color": "#000000",
+    "text_color": "#FFFFFF",
+    "duration_s": 2.0
+  },
+  "audio": {
+    "bgm": {
+      "prompt": "solo piano dramatic mood, building tempo, classical inspiration solemn",
+      "duration_ms": 12720,
+      "output_path": "publishing/audio/bgm/06_FAKE.mp3"
+    },
+    "sfx_track": [
+      {
+        "time_s": 0.0,
+        "desc": "high freq glassy click sharp hook",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/06_FAKE_t00.mp3"
+      },
+      {
+        "time_s": 2.0,
+        "desc": "reverse whoosh tail transition",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/06_FAKE_t02.mp3"
+      },
+      {
+        "time_s": 4.0,
+        "desc": "warm bell hollow chime tap",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/06_FAKE_t04.mp3"
+      },
+      {
+        "time_s": 6.0,
+        "desc": "metallic ding sharp interrupt subtle",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/06_FAKE_t06.mp3"
+      },
+      {
+        "time_s": 8.0,
+        "desc": "crystal sparkle glassy peak shimmer bright",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/06_FAKE_t08.mp3"
+      }
+    ]
+  }
+}

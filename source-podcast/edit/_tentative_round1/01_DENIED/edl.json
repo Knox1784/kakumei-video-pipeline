@@ -1,0 +1,58 @@
+{
+  "id": "01_DENIED",
+  "title": "否定こそ最高の燃料",
+  "sources": {
+    "raw_podcast": "/Users/knoxv/Documents/Claude/Projects/video-use-test/source-podcast/IMG_6372.MOV"
+  },
+  "ranges": [
+    {"start": 2900.11, "end": 2914.93}
+  ],
+  "composition": "center_crop",
+  "cold_open": {
+    "text": "否定されるほど\n物語は面白い",
+    "font": "Hiragino Sans W6",
+    "size_pt": 70,
+    "bg_color": "#000000",
+    "text_color": "#FFFFFF",
+    "duration_s": 2.0
+  },
+  "audio": {
+    "bgm": {
+      "prompt": "defiant string quartet, triumphant rise, building tempo, classical inspiration",
+      "duration_ms": 13880,
+      "output_path": "publishing/audio/bgm/01_DENIED.mp3"
+    },
+    "sfx_track": [
+      {
+        "time_s": 0.0,
+        "desc": "subtle high-freq attention click, glassy intimate",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/01_DENIED_t00.mp3"
+      },
+      {
+        "time_s": 2.0,
+        "desc": "soft whoosh transition with reverb tail",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/01_DENIED_t02.mp3"
+      },
+      {
+        "time_s": 4.0,
+        "desc": "warm bell tap with slow decay",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/01_DENIED_t04.mp3"
+      },
+      {
+        "time_s": 6.0,
+        "desc": "low pulse 90Hz heartbeat sync subtle",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/01_DENIED_t06.mp3"
+      },
+      {
+        "time_s": 8.0,
+        "desc": "glassy sparkle high frequency shimmer",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/01_DENIED_t08.mp3"
+      }
+    ]
+  }
+}

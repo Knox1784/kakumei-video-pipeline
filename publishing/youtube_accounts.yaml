@@ -1,0 +1,62 @@
+# =============================================================================
+# YouTube アカウント台帳
+# =============================================================================
+# 1つのGmailに複数YouTubeブランドチャンネルをぶら下げ可能
+# 新規追加時の手順:
+#   1) Gmail新規作成 (or既存利用)
+#   2) YouTubeでブランドチャンネル作成
+#   3) Cloud Consoleでテストユーザー登録 (tokumasasns@gmail.com 等)
+#      → console.cloud.google.com → youtube-100-account-managing
+#      → APIs & Services → OAuth consent screen → Test users → ADD USERS
+#   4) python3 ~/.claude/skills/youtube-uploader/scripts/upload.py \
+#        --authorize --token publishing/tokens/youtube/{id}.json
+#   5) ブラウザで該当Gmailログイン→ブランドチャンネル選択→承認
+#   6) このファイルに1エントリ追記
+# =============================================================================
+
+google_cloud_project: youtube-100-account-managing
+client_secret: credentials/youtube_client_secret.json
+client_id_short: 165534952501  # Cloud Project識別用
+status: Testing  # ⚠️ Testing状態のままだとrefresh_tokenが7日で失効
+
+accounts:
+  - id: im_shoma
+    token_file: tokens/youtube/im_shoma.json
+    gmail: shomainaba1784@gmail.com
+    channel_name: "匠瞬 / SHOMA Stories Reunite Humanity"
+    channel_handle: "@im_shoma"
+    channel_id: UCFVPcxrPxvyZtXhaQXGXm3Q
+    purpose: 本人英語ブランドチャンネル
+    authorized_at: 2026-04-15
+    refresh_at: 2026-04-27  # トークンリフレッシュ日
+    notes: |
+      旧clip-army運用時に作成。Roy Lee系英語切り抜きで使用想定だった。
+      ショーマpodcast日本語コンテンツの投稿先には使わない。
+
+  # ===========================================================================
+  # 革命一家チャンネル (これから authorize する) ⭐
+  # ===========================================================================
+  - id: kakumei_ikka
+    token_file: tokens/youtube/kakumei_ikka.json
+    gmail: tokumasasns@gmail.com
+    channel_name: "革命一家"
+    channel_handle: "@kakumei_ikka"
+    channel_id: UCLFDso06pqOYLnXfv5-jDsQ
+    purpose: ショーマ思想Podcast切り抜き分散投下用 (Phase 1メインチャンネル)
+    authorized_at: 2026-04-27
+    notes: |
+      『公式』しょうま切り抜きSNSアカウント群 (tokumasasns@gmail.com) 配下。
+      同じGmailに【公式】しょうまビデオポッドキャスト切り抜き (@youreshoma) もぶら下がっている。
+      自動投稿/分析/改善のフィードバックループ最初の対象。
+
+  - id: youreshoma
+    token_file: tokens/youtube/youreshoma.json
+    gmail: tokumasasns@gmail.com
+    channel_name: "【公式】しょうまビデオポッドキャスト切り抜き"
+    channel_handle: "@youreshoma"
+    channel_id: UC1B_xZD8wEe7kOuxi7PK0IA
+    purpose: 本人ビデオポッドキャスト切り抜き投稿用 (副)
+    authorized_at: 2026-04-27
+    notes: |
+      revolution_ikka 認証中に誤選択して取得したトークンを保存活用。
+      革命一家とは別チャンネルだが将来の投稿先として有用。

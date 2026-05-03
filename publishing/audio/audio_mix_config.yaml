@@ -1,0 +1,76 @@
+# =============================================================================
+# Audio Mix Configuration (single source of truth)
+# =============================================================================
+# ⭐ 現在の設定は v7 (2026-04-27) = ユーザー承認済み最終確定版 ⭐
+#
+# このファイル1つを書き換えれば、全クリップの音量・正規化・mix挙動が即反映される
+# mix_final.py がこのconfigを読み込んで使う
+#
+# DEFAULT動作: 個別指示なしでこのファイルの値が必ず使われる
+# 更新の仕方: 値を変えて保存 → 次回 mix_final.py 実行時に自動反映
+# 個別クリップのoverride: EDLの "audio.mix_override" フィールドで上書き可能
+#                       (デフォルトはconfig値、override指定時のみ変更)
+# =============================================================================
+
+# --- 音量バランス (dB相対値) ---
+# 各素材は最初に loudnorm=-16 LUFS に揃えてから、以下のdB差を適用する
+# → 素材の元音量に依存しない、予測可能なバランス
+#
+# 値変更履歴:
+#   v1: BGM -22, SFX -10 (聞こえなかった)
+#   v2: BGM -14, SFX -6  (聞こえるが控えめ)
+#   v3: BGM -10, SFX -6  (前に出した)
+#   v4: BGM -6,  SFX -3  (さらに前に)
+#   v5: BGM -2,  SFX -3  (ほぼナレ同等)
+#   v6: BGM -5,  SFX -3  (少し下げる、迫力BGM)
+#   v7: BGM -5,  SFX -3  + ダッキング有効化  ⭐ 確定版 (2026-04-27)
+volumes:
+  narration_db: 0      # 基準。ショーマの声、最優先
+  sfx_db: -3           # 確定値。SFXはナレに近いレベルでハッキリ存在感
+  bgm_db: -5           # 確定値。BGM平常時 (ナレなし区間)。発話時はダッキングでさらに低下
+
+# --- Loudness 正規化 (YouTube/TikTok 標準) ---
+# 全体音量を揃えて、ループ再生時の音量変動を防ぐ
+loudness:
+  integrated_target_lufs: -14   # YouTube/TikTok推奨値
+  true_peak_db: -1              # クリッピング防止
+  loudness_range: 11            # ダイナミックレンジ
+
+# --- BGM 生成パラメータ ---
+bgm:
+  duration_buffer_ms: 2000      # クリップ尺 + 2秒余裕(末尾フェード用)
+  fade_out_ms: 1500             # 末尾フェードアウト時間
+  fade_in_ms: 500               # 冒頭フェードイン時間
+
+# --- オーディオダッキング (Side-chain Compression) ---
+# ナレが入っている瞬間、BGMを自動的に下げる。プロYouTuberが必ず使う技術。
+# フック発話・通常発話・全部カバー。個別指示不要。
+ducking:
+  enabled: true                 # true=有効、false=無効化
+  threshold: 0.04               # 発話検出感度 (0.0-1.0、低いほど敏感)
+  ratio: 8                      # 圧縮率 (8 = 発話時にBGMを大きく下げる)
+  attack_ms: 20                 # 圧縮開始までの時間 (短いほど反応速い)
+  release_ms: 350               # 圧縮解除までの時間 (短いと不自然、長いと反応鈍い)
+  makeup_db: 0                  # リリース後の音量補正 (通常0)
+
+# --- SFX 生成・配置パラメータ ---
+sfx:
+  default_prompt_influence: 0.7 # 0.0-1.0、高いほどプロンプトに忠実
+  interval_s: 2.0               # ★ 2秒に1個必ず入れる (密度ルール、飽きさせない)
+  default_duration_s: 0.5       # 各SFXの長さ (短くサブリミナル)
+  # editor sub-agent はクリップ尺から個数を自動算出:
+  #   n_sfx = floor(clip_duration_s / interval_s) + 1
+  #   例: 20秒クリップ → 11個 (0.0, 2.0, 4.0, ..., 20.0)
+
+# --- Mix エンジン (ffmpeg) ---
+mix:
+  amix_normalize: 0             # 0=各音量保持、1=自動正規化
+  output_codec: "aac"           # YouTube推奨
+  output_bitrate: "192k"
+  output_sample_rate: 44100
+  output_channels: 2
+
+# --- Phase 1 スケール時の調整スイッチ ---
+phase_1:
+  enable_per_account_volume_jitter: false   # 100アカ運用時、アカウントごとに±2dB揺らぎ
+  per_account_volume_range_db: 2            # ±2dB

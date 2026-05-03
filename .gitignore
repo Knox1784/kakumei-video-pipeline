@@ -1,0 +1,80 @@
+# =====================================================================
+# Secrets — NEVER COMMIT
+# =====================================================================
+publishing/tokens/
+publishing/credentials/
+video-use/.env
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*_secret*.json
+*credentials*.json
+!**/youtube_client_secret.example.json
+
+# =====================================================================
+# Large source media (distribute separately via Drive/Dropbox)
+# =====================================================================
+*.MOV
+*.mov
+*.MP4
+*.mp4
+*.MTS
+*.AVI
+*.avi
+*.mkv
+
+# =====================================================================
+# Episode-specific intermediates (each member regenerates)
+# =====================================================================
+source-podcast/IMG_*
+source-podcast/raw_*
+source-podcast/edit/transcripts/
+source-podcast/edit/takes_packed.md
+source-podcast/edit/master.srt
+source-podcast/edit/edl.json
+source-podcast/edit/CANDIDATE_POOL.md
+source-podcast/edit/shorts/
+
+# Per-clip intermediates inside shorts_v2 (keep dir + compose script)
+source-podcast/edit/shorts_v2/*/
+!source-podcast/edit/shorts_v2/.gitkeep
+source-ep*/
+
+# =====================================================================
+# Generated audio (regenerate via batch_generate.py)
+# =====================================================================
+publishing/audio/bgm/*.mp3
+publishing/audio/bgm/*.wav
+publishing/audio/sfx/*.mp3
+publishing/audio/sfx/*.wav
+!publishing/audio/bgm/.gitkeep
+!publishing/audio/sfx/.gitkeep
+
+# =====================================================================
+# Per-member publishing state & logs
+# =====================================================================
+publishing/publishing-state/
+publishing/scripts/logs/
+!publishing/scripts/logs/.gitkeep
+
+# =====================================================================
+# System / Python / IDE
+# =====================================================================
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+*.egg-info/
+.idea/
+.vscode/
+*.swp
+*~

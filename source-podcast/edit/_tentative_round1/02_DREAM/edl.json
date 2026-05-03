@@ -1,0 +1,58 @@
+{
+  "id": "02_DREAM",
+  "title": "他人を見るな夢を見ろ",
+  "sources": {
+    "raw_podcast": "/Users/knoxv/Documents/Claude/Projects/video-use-test/source-podcast/IMG_6372.MOV"
+  },
+  "ranges": [
+    {"start": 2837.03, "end": 2850.75}
+  ],
+  "composition": "center_crop",
+  "cold_open": {
+    "text": "昔の自分に\n何て言う？",
+    "font": "Hiragino Sans W6",
+    "size_pt": 70,
+    "bg_color": "#000000",
+    "text_color": "#FFFFFF",
+    "duration_s": 2.0
+  },
+  "audio": {
+    "bgm": {
+      "prompt": "orchestral strings, heroic resolve, slow build, classical inspiration",
+      "duration_ms": 13147,
+      "output_path": "publishing/audio/bgm/02_DREAM.mp3"
+    },
+    "sfx_track": [
+      {
+        "time_s": 0.0,
+        "desc": "typewriter mechanical click hook",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/02_DREAM_t00.mp3"
+      },
+      {
+        "time_s": 2.0,
+        "desc": "sweep transition airy",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/02_DREAM_t02.mp3"
+      },
+      {
+        "time_s": 4.0,
+        "desc": "wood knock with soft decay",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/02_DREAM_t04.mp3"
+      },
+      {
+        "time_s": 6.0,
+        "desc": "metallic ding sharp pattern interrupt",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/02_DREAM_t06.mp3"
+      },
+      {
+        "time_s": 8.0,
+        "desc": "crystal tinkle ethereal high freq",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/02_DREAM_t08.mp3"
+      }
+    ]
+  }
+}

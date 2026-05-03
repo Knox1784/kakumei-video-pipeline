@@ -1,0 +1,58 @@
+{
+  "id": "05_CRINGE",
+  "title": "そのむずむずは罠",
+  "sources": {
+    "raw_podcast": "/Users/knoxv/Documents/Claude/Projects/video-use-test/source-podcast/IMG_6372.MOV"
+  },
+  "ranges": [
+    {"start": 600.01, "end": 613.09}
+  ],
+  "composition": "center_crop",
+  "cold_open": {
+    "text": "共感性羞恥は\n嘲笑の証拠",
+    "font": "Hiragino Sans W6",
+    "size_pt": 70,
+    "bg_color": "#000000",
+    "text_color": "#FFFFFF",
+    "duration_s": 2.0
+  },
+  "audio": {
+    "bgm": {
+      "prompt": "minimal piano with cello, introspective contemplative mood, static slow tempo",
+      "duration_ms": 12720,
+      "output_path": "publishing/audio/bgm/05_CRINGE.mp3"
+    },
+    "sfx_track": [
+      {
+        "time_s": 0.0,
+        "desc": "glassy intimate click subtle attention",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/05_CRINGE_t00.mp3"
+      },
+      {
+        "time_s": 2.0,
+        "desc": "soft sweep transition reverb",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/05_CRINGE_t02.mp3"
+      },
+      {
+        "time_s": 4.0,
+        "desc": "muted wood tap with decay",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/05_CRINGE_t04.mp3"
+      },
+      {
+        "time_s": 6.0,
+        "desc": "low pulse subtle bass thump heart",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/05_CRINGE_t06.mp3"
+      },
+      {
+        "time_s": 8.0,
+        "desc": "ethereal twinkle high freq awareness",
+        "duration_s": 0.5,
+        "output_path": "publishing/audio/sfx/05_CRINGE_t08.mp3"
+      }
+    ]
+  }
+}
