@@ -64,6 +64,13 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 1日6本までのクォータ制約 (40本なら7日分散)
 - 投稿後 video_id を `publishing/publishing-state/<source>/<clip_id>.json` に記録
 
+### 自動投稿 (2026-05-04〜 GHA 稼働中)
+- **GitHub Actions が毎日 4スロット (07:30 / 12:00 / 19:00 / 21:00 JST) で発火**
+- `publishing/queue/{clip_id}/{short.mp4, meta.json}` を git push しておけば、次のスロットで public 投稿
+- 1スロット=1本、queue 空ならスキップ
+- 失敗時は `auto-post-failure` ラベル付き Issue が自動作成
+- 詳細運用は **`publishing/AUTO_POST_RULES.md`** 参照
+
 ### post-monitor 自動チェック (2026-05-01〜 launchd 稼働中)
 - **launchd `com.kakumei.postmonitor` が毎日 08:00 起動** → `publishing/scripts/run_monitor.sh`
 - `publishing-state/source-podcast/*.json` を全件 glob、`privacy=="public"` のみ対象
