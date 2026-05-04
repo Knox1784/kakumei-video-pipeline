@@ -3,10 +3,10 @@ name: YouTube Auto Post
 on:
   schedule:
     # JST → UTC (JST = UTC+9)。posting_schedule.yaml と同期させること。
-    # 【一時テスト中】07:50 / 19:50 で schedule トリガー検証中。検証後 07:30 / 19:00 に戻す
-    - cron: '50 22 * * *'   # 07:50 JST (= 22:50 UTC 前日) [TEST]
+    - cron: '30 22 * * *'   # 07:30 JST (= 22:30 UTC 前日)
     - cron: '0 3 * * *'     # 12:00 JST (= 03:00 UTC)
-    - cron: '50 10 * * *'   # 19:50 JST (= 10:50 UTC) [TEST]
+    - cron: '0 10 * * *'    # 19:00 JST (= 10:00 UTC)
+    - cron: '55 10 * * *'   # 19:55 JST (= 10:55 UTC) 【一時テスト用、後で削除】
     - cron: '0 12 * * *'    # 21:00 JST (= 12:00 UTC)
   workflow_dispatch:        # 手動トリガー (テスト用)
 
