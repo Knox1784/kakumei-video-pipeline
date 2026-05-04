@@ -32,13 +32,24 @@ jobs:
         run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 pyyaml
 
       - name: Restore tokens from secrets
+        # 命名規則: YT_TOKEN_<account_id_upper> → publishing/tokens/youtube/<account_id_lower>.json
+        # 新アカ追加時は (1) GitHub Secret を YT_TOKEN_<NAME> で登録 (2) ここに env 行を追加
         env:
-          KAKUMEI_IKKA_TOKEN: ${{ secrets.KAKUMEI_IKKA_TOKEN }}
+          YT_TOKEN_KAKUMEI_IKKA: ${{ secrets.YT_TOKEN_KAKUMEI_IKKA }}
         run: |
           mkdir -p publishing/tokens/youtube
-          printf '%s' "$KAKUMEI_IKKA_TOKEN" > publishing/tokens/youtube/kakumei_ikka.json
-          # ファイル存在チェックのみ (中身は表示しない)
-          test -s publishing/tokens/youtube/kakumei_ikka.json || (echo "❌ token empty"; exit 1)
+          for var in $(env | grep -oE '^YT_TOKEN_[A-Z0-9_]+' | sort -u); do
+            account=$(echo "${var#YT_TOKEN_}" | tr 'A-Z' 'a-z')
+            value=$(printenv "$var" || true)
+            if [ -z "$value" ]; then
+              echo "⚠️  $var is empty, skipping"
+              continue
+            fi
+            printf '%s' "$value" > "publishing/tokens/youtube/${account}.json"
+            echo "✅ wrote publishing/tokens/youtube/${account}.json ($(wc -c < publishing/tokens/youtube/${account}.json) bytes)"
+          done
+          # 少なくとも1つ書けていることを確認
+          test -n "$(ls publishing/tokens/youtube/*.json 2>/dev/null)" || (echo "❌ no tokens written"; exit 1)
 
       - name: Dispatch queue
         id: dispatch
