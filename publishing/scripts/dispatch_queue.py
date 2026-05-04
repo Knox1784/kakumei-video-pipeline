@@ -112,12 +112,25 @@ def upload_video(video_path: Path, meta: dict, token_path: Path) -> dict:
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError(f"upload.py failed: {r.stderr.strip()[-2000:]}")
-    # upload.py の最終 JSON 行を抽出
-    for line in reversed(r.stdout.strip().splitlines()):
-        line = line.strip()
-        if line.startswith("{"):
-            return json.loads(line)
-    raise RuntimeError(f"upload.py 出力に JSON がない: {r.stdout[-500:]}")
+    # upload.py の出力末尾にある JSON ブロックを抽出 (整形済 multi-line)
+    out = r.stdout
+    end = out.rfind("}")
+    if end == -1:
+        raise RuntimeError(f"upload.py 出力に '}}' がない: {out[-500:]}")
+    # 対応する '{' を depth カウントで探す
+    depth = 0
+    start = -1
+    for i in range(end, -1, -1):
+        if out[i] == "}":
+            depth += 1
+        elif out[i] == "{":
+            depth -= 1
+            if depth == 0:
+                start = i
+                break
+    if start == -1:
+        raise RuntimeError(f"upload.py 出力に対応する '{{' がない: {out[-500:]}")
+    return json.loads(out[start:end + 1])
 
 
 def write_state(meta: dict, upload_result: dict, now: datetime):
