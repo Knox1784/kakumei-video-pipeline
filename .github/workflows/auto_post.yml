@@ -46,14 +46,24 @@ jobs:
               continue
             fi
             printf '%s' "$value" > "publishing/tokens/youtube/${account}.json"
-            echo "✅ wrote publishing/tokens/youtube/${account}.json ($(wc -c < publishing/tokens/youtube/${account}.json) bytes)"
+            size=$(wc -c < "publishing/tokens/youtube/${account}.json")
+            echo "✅ wrote publishing/tokens/youtube/${account}.json ($size bytes)"
+            # Sanity: 健全な OAuth token JSON は通常 600-1200 bytes
+            if [ "$size" -lt 400 ]; then
+              echo "❌ $var の内容が短すぎ ($size bytes < 400)。Secret 登録時に全文がコピーされていない可能性。再登録が必要"
+              exit 1
+            fi
+            # JSON valid + refresh_token 存在チェック
+            python3 -c "import json,sys; d=json.load(open('publishing/tokens/youtube/${account}.json')); assert d.get('refresh_token'),'no refresh_token'" || { echo "❌ ${account}.json invalid"; exit 1; }
           done
           # 少なくとも1つ書けていることを確認
           test -n "$(ls publishing/tokens/youtube/*.json 2>/dev/null)" || (echo "❌ no tokens written"; exit 1)
 
       - name: Dispatch queue
         id: dispatch
+        shell: bash
         run: |
+          set -o pipefail   # tee で exit code を握りつぶさない
           python3 publishing/scripts/dispatch_queue.py 2>&1 | tee dispatch.log
 
       - name: Commit state changes
