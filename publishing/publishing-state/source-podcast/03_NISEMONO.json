@@ -1,0 +1,44 @@
+{
+  "clip_id": "03_NISEMONO",
+  "title": "あなたは偽物に偽物に偽物を重ねている #Shorts",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "video_id": "8u7_ob_tSa8",
+  "url": "https://youtube.com/shorts/8u7_ob_tSa8",
+  "privacy": "public",
+  "posted_at": "2026-05-01",
+  "made_public_at": "2026-05-01",
+  "source_video": "IMG_6372.MOV",
+  "source_range_summary": "1714.84-1743.92 (multi-segment hook→回収 structure)",
+  "duration_s": 12.9,
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "SNS",
+    "インスタ",
+    "嫉妬",
+    "自分を見つける",
+    "ショウマ"
+  ],
+  "monitor_results": [
+    {
+      "checked_at": "2026-05-02T12:50:41.504210+00:00",
+      "hours_since_post": 36.84,
+      "check_type": "health_24h",
+      "data": [
+        {
+          "video_id": "8u7_ob_tSa8",
+          "upload_status": "processed",
+          "privacy": "public",
+          "rejection_reason": null,
+          "failure_reason": null,
+          "views": 1661,
+          "likes": 2,
+          "comments": 0
+        }
+      ],
+      "alert_level": "ok",
+      "alert_reason": null
+    }
+  ]
+}

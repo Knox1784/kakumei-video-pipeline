@@ -62,7 +62,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # tokens は .gitignore で除外済 (push されない)
-          git add publishing/queue publishing/publishing-state
+          # 各 path 個別に add し、未存在/空でもエラーにしない
+          git add publishing/queue 2>/dev/null || true
+          git add publishing/publishing-state 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "no changes (no-op tick)"
           else

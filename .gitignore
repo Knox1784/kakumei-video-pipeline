@@ -56,9 +56,10 @@ publishing/audio/sfx/*.wav
 !publishing/audio/sfx/.gitkeep
 
 # =====================================================================
-# Per-member publishing state & logs
+# Publishing state & logs
 # =====================================================================
-publishing/publishing-state/
+# publishing-state は GHA auto-post と post-monitor が共有するため git 管理
+# (動画ID/視聴数等を含むが、private repo なので問題なし)
 publishing/scripts/logs/
 !publishing/scripts/logs/.gitkeep
 
