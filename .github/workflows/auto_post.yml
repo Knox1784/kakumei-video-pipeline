@@ -1,0 +1,83 @@
+name: YouTube Auto Post
+
+on:
+  schedule:
+    # JST → UTC (JST = UTC+9)。posting_schedule.yaml と同期させること。
+    - cron: '30 22 * * *'   # 07:30 JST (= 22:30 UTC 前日)
+    - cron: '0 3 * * *'     # 12:00 JST (= 03:00 UTC)
+    - cron: '0 10 * * *'    # 19:00 JST (= 10:00 UTC)
+    - cron: '0 12 * * *'    # 21:00 JST (= 12:00 UTC)
+  workflow_dispatch:        # 手動トリガー (テスト用)
+
+concurrency:
+  group: auto-post          # 二重起動防止
+
+permissions:
+  contents: write           # publishing-state を git push するため
+  issues: write             # 失敗時に Issue 作成
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 pyyaml
+
+      - name: Restore tokens from secrets
+        env:
+          KAKUMEI_IKKA_TOKEN: ${{ secrets.KAKUMEI_IKKA_TOKEN }}
+        run: |
+          mkdir -p publishing/tokens/youtube
+          printf '%s' "$KAKUMEI_IKKA_TOKEN" > publishing/tokens/youtube/kakumei_ikka.json
+          # ファイル存在チェックのみ (中身は表示しない)
+          test -s publishing/tokens/youtube/kakumei_ikka.json || (echo "❌ token empty"; exit 1)
+
+      - name: Dispatch queue
+        id: dispatch
+        run: |
+          python3 publishing/scripts/dispatch_queue.py 2>&1 | tee dispatch.log
+
+      - name: Commit state changes
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # tokens は .gitignore で除外済 (push されない)
+          git add publishing/queue publishing/publishing-state
+          if git diff --staged --quiet; then
+            echo "no changes (no-op tick)"
+          else
+            git commit -m "auto-post: dispatch queue $(date -u +%FT%TZ)"
+            git push
+          fi
+
+      - name: Open issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let log = '(no log file)';
+            try { log = fs.readFileSync('dispatch.log', 'utf8'); } catch (e) {}
+            const body = [
+              `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              '',
+              '```',
+              log.slice(-4000),
+              '```',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `❌ Auto-post failed at ${new Date().toISOString()}`,
+              body,
+              labels: ['auto-post-failure'],
+            });

@@ -163,13 +163,33 @@ def process_one(state_path: Path, force: bool, dry_run: bool):
                   file=sys.stderr)
 
 
+def sync_repo():
+    """GitHub Actions が push した publishing-state を取り込むため git pull --rebase"""
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(ROOT), "pull", "--rebase", "--autostash"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if r.returncode == 0:
+            print(f"  git pull --rebase: ok ({r.stdout.strip()[:200]})")
+        else:
+            # 失敗してもmonitorは継続 (古いstateで動くだけ、致命的ではない)
+            print(f"  git pull --rebase: skipped ({r.stderr.strip()[:200]})", file=sys.stderr)
+    except Exception as e:
+        print(f"  git pull --rebase: error {e}", file=sys.stderr)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--force", action="store_true",
                    help="経過時間判定をバイパスし、未実施の check を全て即時実行")
     p.add_argument("--dry-run", action="store_true", help="JSON書き込みをせず動作確認のみ")
     p.add_argument("--only", help="特定の clip_id (ファイル名 stem) だけ対象")
+    p.add_argument("--no-pull", action="store_true", help="git pull をスキップ")
     args = p.parse_args()
+
+    if not args.no_pull:
+        sync_repo()
 
     if not MONITOR.exists():
         print(f"Error: monitor.py not found at {MONITOR}", file=sys.stderr)

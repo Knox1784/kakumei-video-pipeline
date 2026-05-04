@@ -25,6 +25,9 @@ video-use/.env
 *.avi
 *.mkv
 
+# Exception: queue で投稿待ちの mp4 は git 管理 (GHA dispatcher が拾うため)
+!publishing/queue/**/*.mp4
+
 # =====================================================================
 # Episode-specific intermediates (each member regenerates)
 # =====================================================================
