@@ -152,6 +152,7 @@ def write_state(meta: dict, upload_result: dict, now: datetime):
         "source_range_summary": meta.get("source_range_summary"),
         "duration_s": meta.get("duration_s"),
         "tags": meta.get("tags", []),
+        "experiment_arm": meta.get("experiment_arm"),
         "posted_via": "github-actions",
     }
     out = STATE_DIR / f"{clip_id}.json"

@@ -11,5 +11,13 @@
   "source_video": "IMG_6372.MOV",
   "source_range_summary": "797.97-837.01 (multi-segment hook→回収 structure)",
   "duration_s": 11.1,
-  "tags": ["Shorts", "革命一家", "ショウマ", "自分を見つける", "嘲笑", "脳科学"]
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "ショウマ",
+    "自分を見つける",
+    "嘲笑",
+    "脳科学"
+  ],
+  "experiment_arm": "duration_short"
 }

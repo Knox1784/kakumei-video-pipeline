@@ -14,5 +14,6 @@
   "published_at": "2026-04-27",
   "monitor_check_24h": "2026-04-28",
   "monitor_check_72h": "2026-04-30",
-  "notes": "Phase 1 初投稿。物理動作確認テスト。動作正常。"
+  "notes": "Phase 1 初投稿。物理動作確認テスト。動作正常。",
+  "experiment_arm": "duration_short"
 }

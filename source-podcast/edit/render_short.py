@@ -46,6 +46,14 @@ SUBTITLE_STYLES = {
         "bold": -1, "primary_color": "&H00FFFFFF", "outline_color": "&H00000000",
         "vertical": True,  # text formatted with \N between every char → stacks downward
     },
+    "vertical_inside_left_brush": {
+        # 名言風: Yuji Mai 筆フォント、太い縁取りで掛け軸感
+        "font_name": "Yuji Mai",
+        "alignment": 7, "font_size": 78, "outline": 6, "shadow": 3,
+        "margin_l": 180, "margin_r": 40, "margin_v": 70,
+        "bold": 0, "primary_color": "&H00FFFFFF", "outline_color": "&H00000000",
+        "vertical": True,
+    },
     # Future techniques (add as needed):
     #   "karaoke_yellow_highlight": current word in yellow via \k tags
     #   "punchline_zoom_pulse":     payoff scaled up via \fscx/\fscy + \t() animation
@@ -75,14 +83,79 @@ def srt_ts(s: float) -> str:
     return f"{h:02d}:{m:02d}:{sec:02d},{ms:03d}"
 
 
-def build_word_reveal_cues(transcript_path: Path, ranges: list[dict]) -> list[tuple[float, float, str]]:
+def _apply_transcript_overrides(words: list[dict], overrides: list[dict]) -> list[dict]:
+    """Replace words within each override range with new text, preserving timing proportionally.
+
+    Override format: {"start": float, "end": float, "text": "民主"}
+    Words whose midpoint falls within [start, end] are replaced. The new text is split
+    char-by-char and distributed across those original word slots (truncating/padding as needed).
+    Words outside any override are returned unchanged. Original word objects are not mutated.
+    """
+    if not overrides:
+        return words
+    out = []
+    for w in words:
+        if w.get('type') != 'word':
+            out.append(w)
+            continue
+        wmid = (w['start'] + w['end']) / 2.0
+        replaced = False
+        for ov in overrides:
+            if ov['start'] <= wmid <= ov['end']:
+                replaced = True
+                break
+        if not replaced:
+            out.append(w)
+    # Now substitute text inside each override's slice
+    for ov in overrides:
+        slice_idx = [i for i, w in enumerate(words)
+                     if w.get('type') == 'word'
+                     and ov['start'] <= (w['start'] + w['end']) / 2.0 <= ov['end']]
+        if not slice_idx:
+            continue
+        new_chars = list(ov['text'])
+        new_words = []
+        for k, idx in enumerate(slice_idx):
+            base = dict(words[idx])
+            if k < len(new_chars):
+                base['text'] = new_chars[k]
+            else:
+                base['text'] = ''  # extra slots become empty
+            new_words.append(base)
+        # If override text is longer than original slot count, append leftover chars
+        # to the last word's text so nothing is lost
+        if len(new_chars) > len(slice_idx) and new_words:
+            tail = ''.join(new_chars[len(slice_idx):])
+            new_words[-1]['text'] = (new_words[-1]['text'] or '') + tail
+        # Re-insert into out at the right position (out was built skipping these)
+        # Strategy: rebuild out from words but using new_words for these indices
+        out_map = {id(words[i]): nw for i, nw in zip(slice_idx, new_words)}
+        rebuilt = []
+        for w in words:
+            if id(w) in out_map:
+                rebuilt.append(out_map[id(w)])
+            else:
+                rebuilt.append(w)
+        words = rebuilt
+        out = words
+    return out
+
+
+def build_word_reveal_cues(transcript_path: Path, ranges: list[dict],
+                           overrides: list[dict] | None = None) -> list[tuple[float, float, str]]:
     """Build cumulative word-by-word reveal cues for the given source ranges.
 
     Returns list of (out_start_s, out_end_s, text) tuples in OUTPUT timeline (concat'd).
     Each char appears as it is spoken; sentence accumulates char-by-char and clears
-    on sentence boundary (。！？ or silence ≥0.6s)."""
+    on sentence boundary (。！？ or silence ≥0.6s).
+
+    `overrides`: optional list of {"start", "end", "text"} to fix Scribe misrecognitions.
+    """
     transcript = json.loads(transcript_path.read_text(encoding='utf-8'))
     all_words = transcript['words']
+    if overrides:
+        all_words = _apply_transcript_overrides(all_words, overrides)
+    MAX_CUM_CHARS = 16  # vertical screen-fit cap; reset cumulative when exceeded
     entries = []
     seg_offset = 0.0
     SENT_GAP = 0.6  # silence ≥0.6s = sentence break
@@ -123,6 +196,9 @@ def build_word_reveal_cues(transcript_path: Path, ranges: list[dict]) -> list[tu
                 t = (w.get('text') or '').strip()
                 if not t:
                     continue
+                # Reset if accumulating this char would overflow vertical screen
+                if len(cumulative) + len(t) > MAX_CUM_CHARS:
+                    cumulative = ""
                 cumulative += t
                 cs = max(seg_start, w['start'])
                 if i + 1 < len(sent):
@@ -184,7 +260,7 @@ def write_ass(entries: list[tuple[float, float, str]], out_ass: Path,
         "Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,"
         "Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,"
         "Alignment,MarginL,MarginR,MarginV,Encoding\n"
-        f"Style: Default,{ASS_FONT_NAME},{style['font_size']},"
+        f"Style: Default,{style.get('font_name', ASS_FONT_NAME)},{style['font_size']},"
         f"{style['primary_color']},&H000000FF,{style['outline_color']},&H00000000,"
         f"{style['bold']},0,0,0,100,100,0,0,1,{style['outline']},{style['shadow']},"
         f"{style['alignment']},{style['margin_l']},{style['margin_r']},{style['margin_v']},1\n\n"
@@ -218,7 +294,8 @@ def build_short_srt(edl: dict, transcript_path: Path, out_srt: Path, max_chars: 
 
     Returns (n_cues, [ass_paths]). Reads layers from edl["subtitles"]["layers"] or DEFAULT_LAYERS.
     """
-    entries = build_word_reveal_cues(transcript_path, edl['ranges'])
+    entries = build_word_reveal_cues(transcript_path, edl['ranges'],
+                                     overrides=edl.get("transcript_overrides"))
     layers = edl.get("subtitles", {}).get("layers", DEFAULT_LAYERS)
     base_name = out_srt.stem  # strips .srt extension
     paths = write_ass_layers(entries, out_srt.parent, base_name, layers)

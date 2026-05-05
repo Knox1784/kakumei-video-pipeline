@@ -39,5 +39,6 @@
       "alert_level": "ok",
       "alert_reason": null
     }
-  ]
+  ],
+  "experiment_arm": "duration_short"
 }

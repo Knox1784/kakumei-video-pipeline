@@ -11,5 +11,13 @@
   "source_video": "IMG_6372.MOV",
   "source_range_summary": "2605.79-2623.67 (multi-segment hook→回収 structure)",
   "duration_s": 10.8,
-  "tags": ["Shorts", "革命一家", "ショウマ", "自分を見つける", "95対5", "嘲笑"]
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "ショウマ",
+    "自分を見つける",
+    "95対5",
+    "嘲笑"
+  ],
+  "experiment_arm": "duration_short"
 }

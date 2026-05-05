@@ -100,7 +100,8 @@ def step_3_hook_clip(short_dir: Path, edl: dict) -> Path:
 
     # Build multi-layer ASS for the hook range (output timeline = 0..dur)
     transcript_path = short_dir.parent.parent / "transcripts" / f"{Path(src).stem}.json"
-    cues = rs.build_word_reveal_cues(transcript_path, [{"start": s, "end": e}])
+    cues = rs.build_word_reveal_cues(transcript_path, [{"start": s, "end": e}],
+                                     overrides=edl.get("transcript_overrides"))
     layers = edl.get("subtitles", {}).get("layers", rs.DEFAULT_LAYERS)
     ass_paths = rs.write_ass_layers(cues, short_dir, "_hook_subs", layers)
 

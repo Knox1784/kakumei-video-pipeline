@@ -20,5 +20,6 @@
     "鏡",
     "嘲笑"
   ],
-  "posted_via": "github-actions"
+  "posted_via": "github-actions",
+  "experiment_arm": "duration_short"
 }
