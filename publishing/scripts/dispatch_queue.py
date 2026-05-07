@@ -87,14 +87,37 @@ def already_posted_in_slot(slot_str: str, now: datetime, window_min: int) -> boo
     return False
 
 
-def pick_queue_head() -> Path | None:
+def pick_queue_head(now: datetime | None = None) -> Path | None:
+    """Pick first queue dir whose meta.not_before is null or <= now.
+
+    `not_before`: optional ISO 8601 datetime in meta.json — gates the upload.
+    Items whose not_before is in the future are skipped (left in queue for later slots).
+    Falls back to FIFO (alphabetical) for items without not_before.
+    """
     if not QUEUE_DIR.exists():
         return None
     dirs = sorted(
         d for d in QUEUE_DIR.iterdir()
         if d.is_dir() and (d / "meta.json").exists() and (d / "short.mp4").exists()
     )
-    return dirs[0] if dirs else None
+    for d in dirs:
+        try:
+            meta = json.loads((d / "meta.json").read_text())
+        except Exception:
+            continue
+        nb = meta.get("not_before")
+        if nb and now is not None:
+            try:
+                nb_dt = datetime.fromisoformat(nb.replace("Z", "+00:00"))
+                if nb_dt.tzinfo is None:
+                    nb_dt = nb_dt.replace(tzinfo=now.tzinfo)
+                if now < nb_dt:
+                    print(f"  ⏰ {d.name} not_before={nb} 未到達 → 次へ", flush=True)
+                    continue
+            except Exception as e:
+                print(f"  ⚠️ {d.name} not_before parse 失敗 ({nb}): {e}、ゲート無視で投稿", flush=True)
+        return d
+    return None
 
 
 def upload_video(video_path: Path, meta: dict, token_path: Path) -> dict:
@@ -181,7 +204,7 @@ def main():
         return 0
 
     # 3. queue 先頭取得
-    target = pick_queue_head()
+    target = pick_queue_head(now)
     if not target:
         print(f"  queue empty → skip", flush=True)
         return 0

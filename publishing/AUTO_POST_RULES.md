@@ -33,6 +33,28 @@ queue に動画+meta 置く → git push → GHA cron → YouTube 投稿 (public
 
 **処理順 = ディレクトリ名昇順** (FIFO)。先に出したい本は数字プレフィックスを小さく付ける (`01_`, `02_`...)。
 
+### `not_before` で投稿時刻をピンポイント指定 (2026-05-07 追加)
+
+meta.json に optional フィールド `not_before` を入れると、その時刻まで dispatcher がスキップする:
+
+```json
+{
+  "clip_id": "10_TAMASHII",
+  ...
+  "not_before": "2026-05-07T22:00:00+09:00"
+}
+```
+
+挙動:
+- `now < not_before` の queue item は dispatcher が**スキップして次の item を見る**
+- すべての item が未到達なら、その cron 発火は**何も投稿せずに終了** (queue 残留)
+- 不正な ISO 形式は警告ログを出して**ゲート無視で投稿** (fail-safe)
+
+ユースケース:
+- 「明日の 12:00 に投稿したい」「来週の 21:00 にこの本」のスケジュール戦略
+- A/B test 用に時刻を揃えて公開したい
+- queue を早めに用意して、後の特定スロットで自動発火させたい
+
 ## 新アカウント追加手順 (Phase 100 拡張)
 
 1. Google Cloud で OAuth トークン取得 → `external_skills/youtube-uploader/scripts/upload.py --authorize`
