@@ -48,6 +48,31 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 
 ---
 
+## ✂️ 編集スタイルルール (型レジストリ)
+
+クリップ生成時は **以下を必ず参照** すること。EDL 作成時に `style` フィールドで型を選択する:
+
+### 必須参照ファイル
+- **`publishing/EDIT_STYLES.md`** ← 型レジストリ詳細 (人間可読)
+
+### 現在登録されている型
+| 型名 | 構造 | 適用例 |
+|---|---|---|
+| `hook_payoff_repeat` | hook→body→**same-line-回収** (本編末尾が hook と同じ) | 既存7本+30s 3本 (07/08/09) |
+| `loop_friendly_tail` | hook→body→**hook の直前セリフ** (元音声でループ自然接続) | 10_TAMASHII / 11_TOUKOU_BETSU (2026-05-07新規) |
+
+### 共通ベース (全型)
+- 出力 1080×1920、warm_cinematic grade
+- 字幕: `vertical_inside_left_brush` (Yuji Mai 筆フォント、累積上限16文字)
+- 本編 1.5x atempo、Cold Open 1.0x
+- SFX 2秒間隔、音響は `AUDIO_DESIGN_RULES.md` v7 設定 (自動適用)
+
+### ルール変更の方法
+ユーザーは `EDIT_STYLES.md` を直接編集すれば反映。新しい型を追加する時は同ファイルの「型の追加方法」セクション参照。
+**Claudeへの個別指示は不要**。
+
+---
+
 ## 📺 投稿運用ルール
 
 ### アカウント管理
@@ -65,7 +90,7 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 投稿後 video_id を `publishing/publishing-state/<source>/<clip_id>.json` に記録
 
 ### 自動投稿 (2026-05-04〜 GHA 稼働中)
-- **GitHub Actions が毎日 4スロット (07:30 / 12:00 / 19:00 / 21:00 JST) で発火**
+- **GitHub Actions が毎日 6スロット (07:30 / 12:00 / 19:00 / 21:00 / 22:00 / 23:00 JST) で発火** (2026-05-07 拡張)
 - `publishing/queue/{clip_id}/{short.mp4, meta.json}` を git push しておけば、次のスロットで public 投稿
 - 1スロット=1本、queue 空ならスキップ
 - 失敗時は `auto-post-failure` ラベル付き Issue が自動作成
@@ -111,3 +136,4 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 | 日付 | 変更 |
 |---|---|
 | 2026-04-27 | 初版作成。audio設計の永続化、ルール文書二層構造を確立 |
+| 2026-05-07 | 編集スタイル型レジストリ (`publishing/EDIT_STYLES.md`) 追加。スロット 4→6 拡張 (22:00/23:00 追加) |
