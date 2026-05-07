@@ -21,8 +21,20 @@
 | Cold Open 速度 | 1.0x | compose_v2.py step_3 |
 | 音響設計 | `AUDIO_DESIGN_RULES.md` 参照 (v7 設定) | publishing/audio/ |
 | SFX 配置 | 2秒間隔 (0/2/4/6...) | AUDIO_DESIGN_RULES.md |
+| **精密末尾トリム** | **最後の発話直後 (+30〜50ms バッファ) でブツ切り終了** | post-compose ffmpeg `-t` |
 
 各型の差は **EDL の `ranges` の組み方** + **`hook_clip` との関係**だけ。compose_v2.py / render_short.py の改修は基本不要。
+
+### 精密末尾トリムの手順 (全型で必須)
+
+完成 (`short_with_audio.mp4`) 後、以下で末尾の無音 BGM/SFX tail をカット:
+
+1. `ffmpeg -i SHORT.mp4 -af silencedetect=n=-25dB:d=0.15 -f null -` で末尾シレンス検出
+2. 最後の `silence_start` 値 = speech 終了時刻 (例: 12.17s)
+3. 出力ファイルを `ffmpeg -i SHORT.mp4 -t {speech_end + 0.03〜0.05s} -c:v libx264 -c:a aac OUT.mp4` でトリム
+4. **注意**: `loop_friendly_tail` 型では特に重要 — ループ時に [末尾セリフ → 冒頭 hook] が音響的に隙間なく繋がる必要あるため、必ず実施する
+
+**設計上の根拠**: speech 終了後の無音 BGM tail はループ感を弱め、視聴維持率も下げる。viral ショートの常識として「最後の発話の瞬間 = 動画終了」がベスト。
 
 ---
 
