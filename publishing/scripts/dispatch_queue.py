@@ -38,36 +38,67 @@ def load_schedule() -> dict:
 
 
 def find_active_slot(now: datetime, slots: list[str], window_min: int) -> str | None:
-    """now が ±window_min 内にあるスロットを返す。複数該当なら最も近いもの。"""
+    """now が ±window_min 内にあるスロットを返す。**過去スロットを優先**。
+
+    GHA cron は 30-50min 遅延することがあり、22:37 で発火したとき
+    abs() で「最近」を選ぶと 23:00 (23min ahead) が選ばれてしまうバグがあった。
+    過去 (now >= slot_dt) を優先することで「22:00 cron が遅延発火した」を
+    正しく 22:00 スロットとして扱う。
+    """
     today = now.date()
-    candidates = []
+    candidates = []  # list of (diff_min, slot_str)
     for slot_str in slots:
         h, m = map(int, slot_str.split(":"))
         slot_dt = datetime.combine(today, time(h, m), tzinfo=now.tzinfo)
-        diff = abs((now - slot_dt).total_seconds()) / 60.0
-        if diff <= window_min:
-            candidates.append((diff, slot_str))
+        diff_min = (now - slot_dt).total_seconds() / 60.0  # 符号付き: 正=過去
+        if abs(diff_min) <= window_min:
+            candidates.append((diff_min, slot_str))
     if not candidates:
         return None
-    candidates.sort()
+    past = [(d, s) for d, s in candidates if d >= 0]
+    if past:
+        past.sort(key=lambda x: x[0])  # 最も最近の過去 (小さい正)
+        return past[0][1]
+    candidates.sort(key=lambda x: -x[0])  # 過去なし → 最も近い未来 (-diff 最小)
     return candidates[0][1]
 
 
 def already_posted_in_slot(slot_str: str, now: datetime, window_min: int) -> bool:
-    """同スロット時刻 ±window_min 内に投稿済みかチェック (publishing-state を見る)"""
+    """同スロット時刻に投稿済みかチェック (publishing-state を見る)。
+
+    優先: `posted_slot` フィールド (新形式) で本日同スロット exact match。
+    後方互換: `posted_slot` がない旧 publishing-state は時刻 ±window_min 範囲で判定。
+
+    旧時刻ベースは隣接スロット (60min 間隔 + 60min ウィンドウ) で重複が起きた。
+    posted_slot を使えば exact match で重複なし。
+    """
+    today_iso = now.date().isoformat()
+    if not STATE_DIR.exists():
+        return False
+
+    # 時刻ベース fallback 用 (posted_slot 無い旧 state 用、ただし窓を半分=30min に絞り重複回避)
     today = now.date()
     h, m = map(int, slot_str.split(":"))
     slot_dt = datetime.combine(today, time(h, m), tzinfo=now.tzinfo)
-    earliest = slot_dt - timedelta(minutes=window_min)
-    latest = slot_dt + timedelta(minutes=window_min)
+    fallback_window = min(window_min, 29)  # 隣接スロット境界に届かないよう 29min
+    earliest = slot_dt - timedelta(minutes=fallback_window)
+    latest = slot_dt + timedelta(minutes=fallback_window)
 
-    if not STATE_DIR.exists():
-        return False
     for f in STATE_DIR.glob("*.json"):
         try:
             d = json.loads(f.read_text())
         except Exception:
             continue
+        # 1) 優先: posted_slot exact match (新形式)
+        if d.get("posted_slot") == slot_str:
+            posted_date = (d.get("posted_at") or d.get("posted_at_iso") or "")[:10]
+            if posted_date == today_iso:
+                return True
+            continue  # posted_slot あるが別日 → 無視
+
+        # 2) 旧形式: 時刻ベース (狭い窓で fallback)
+        if d.get("posted_slot") is not None:
+            continue  # posted_slot 有れば 1) で判定済、それ以外はここに来ない
         ts = d.get("posted_at_iso") or d.get("made_public_at") or d.get("posted_at")
         if not ts:
             continue
@@ -75,7 +106,6 @@ def already_posted_in_slot(slot_str: str, now: datetime, window_min: int) -> boo
             if "T" in ts:
                 dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             else:
-                # date only — 9:00 AM JST 仮定 (古い記録は除外したいだけなので大雑把でOK)
                 dt = datetime.strptime(ts, "%Y-%m-%d").replace(
                     tzinfo=ZoneInfo("Asia/Tokyo"), hour=0
                 )
@@ -156,8 +186,10 @@ def upload_video(video_path: Path, meta: dict, token_path: Path) -> dict:
     return json.loads(out[start:end + 1])
 
 
-def write_state(meta: dict, upload_result: dict, now: datetime):
-    """publishing-state JSON を生成 (= 自動モニター対象化)"""
+def write_state(meta: dict, upload_result: dict, now: datetime, slot_str: str | None = None):
+    """publishing-state JSON を生成 (= 自動モニター対象化)。
+    slot_str: 投稿が紐付くスケジュールスロット (例 "22:00") — already_posted_in_slot の exact match に使用。
+    """
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     clip_id = meta["clip_id"]
     state = {
@@ -171,6 +203,7 @@ def write_state(meta: dict, upload_result: dict, now: datetime):
         "posted_at": now.date().isoformat(),
         "made_public_at": now.date().isoformat(),
         "posted_at_iso": now.isoformat(),
+        "posted_slot": slot_str,
         "source_video": meta.get("source_video"),
         "source_range_summary": meta.get("source_range_summary"),
         "duration_s": meta.get("duration_s"),
@@ -223,8 +256,8 @@ def main():
     result = upload_video(target / "short.mp4", meta, token_path)
     print(f"  ✅ uploaded: {result['url']}", flush=True)
 
-    # 6. state 生成 → queue 削除
-    write_state(meta, result, now)
+    # 6. state 生成 (posted_slot 含む) → queue 削除
+    write_state(meta, result, now, slot_str=slot)
     shutil.rmtree(target)
     print(f"  → queue dir removed: {target.relative_to(ROOT)}", flush=True)
     print(f"=== dispatch_queue end (success) ===", flush=True)
