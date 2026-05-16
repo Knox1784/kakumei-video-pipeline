@@ -1,0 +1,28 @@
+{
+  "clip_id": "24_ELON_VISION",
+  "title": "俺らイーロンマスクに見せる映像を作る #Shorts",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "video_id": "rz73RNce0Os",
+  "url": "https://youtube.com/shorts/rz73RNce0Os",
+  "privacy": "public",
+  "posted_at": "2026-05-16",
+  "made_public_at": "2026-05-16",
+  "posted_at_iso": "2026-05-16T22:33:10.703719+09:00",
+  "posted_slot": "22:00",
+  "source_video": "クリッパー集団計画.mp4",
+  "source_range_summary": "824-855 (イーロンマスクに見せる映像、 物語設計)",
+  "duration_s": 21.96,
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "ショウマ",
+    "クリッパー",
+    "イーロンマスク",
+    "マーケティング",
+    "物語設計"
+  ],
+  "experiment_arm": "duration_15to25s_loop_natural_clippers",
+  "edit_style": "loop_friendly_tail",
+  "posted_via": "github-actions"
+}
