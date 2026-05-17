@@ -3,8 +3,13 @@ name: YouTube Auto Post
 on:
   schedule:
     # JST → UTC (JST = UTC+9)。posting_schedule.yaml と同期させること。
-    # 2026-05-17 縮小: 21:00 / 23:00 のみ (= ユーザー希望、 朝7時/昼/夜中の意図しない投稿を防止)
+    # 2026-05-17 復元: 6 slot 体制に戻す。 意図しないスロット消化は dispatcher の
+    # target_slot ゲート (meta.json) で個別制限する設計に切替済。
+    - cron: '30 22 * * *'   # 07:30 JST (= 22:30 UTC 前日)
+    - cron: '0 3 * * *'     # 12:00 JST (= 03:00 UTC)
+    - cron: '0 10 * * *'    # 19:00 JST (= 10:00 UTC)
     - cron: '0 12 * * *'    # 21:00 JST (= 12:00 UTC)
+    - cron: '0 13 * * *'    # 22:00 JST (= 13:00 UTC)
     - cron: '0 14 * * *'    # 23:00 JST (= 14:00 UTC)
   workflow_dispatch:        # 手動トリガー (テスト用)
 

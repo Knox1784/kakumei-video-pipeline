@@ -57,6 +57,7 @@ CLIP_META = {
         "source_range_summary": "1435-1460 (リーダー責任論 + 言い間違い)",
         "duration_s": 16.73,
         "not_before": "2026-05-17T21:00:00+09:00",
+        "target_slot": "21:00",
     },
     "28_ZERO_KIKAN": {
         "title": "一本目からお金もらえるのがエグい #Shorts",
@@ -65,6 +66,7 @@ CLIP_META = {
         "source_range_summary": "1216-1238 (ゼロ円期間なし)",
         "duration_s": 14.99,
         "not_before": "2026-05-17T23:00:00+09:00",
+        "target_slot": "23:00",
     },
 }
 

@@ -117,12 +117,15 @@ def already_posted_in_slot(slot_str: str, now: datetime, window_min: int) -> boo
     return False
 
 
-def pick_queue_head(now: datetime | None = None) -> Path | None:
-    """Pick first queue dir whose meta.not_before is null or <= now.
+def pick_queue_head(now: datetime | None = None, current_slot: str | None = None) -> Path | None:
+    """Pick first queue dir whose meta.not_before is null or <= now AND target_slot matches current_slot.
 
-    `not_before`: optional ISO 8601 datetime in meta.json — gates the upload.
-    Items whose not_before is in the future are skipped (left in queue for later slots).
-    Falls back to FIFO (alphabetical) for items without not_before.
+    Gates (in order):
+      1. `target_slot` (optional, e.g. "21:00"): if set, must EXACTLY match current_slot.
+         Otherwise the item is skipped (= 朝7時/22時など他スロットでの誤消化を防止).
+      2. `not_before` (optional ISO 8601 datetime): if in the future, item is skipped.
+
+    Items without these fields fall back to FIFO behavior (backward compatible).
     """
     if not QUEUE_DIR.exists():
         return None
@@ -135,6 +138,14 @@ def pick_queue_head(now: datetime | None = None) -> Path | None:
             meta = json.loads((d / "meta.json").read_text())
         except Exception:
             continue
+
+        # 1) target_slot ゲート (新規、 backward compat: 未指定なら無視)
+        target_slot = meta.get("target_slot")
+        if target_slot and current_slot and target_slot != current_slot:
+            print(f"  🎯 {d.name} target_slot={target_slot} != current={current_slot} → 次へ", flush=True)
+            continue
+
+        # 2) not_before ゲート (既存)
         nb = meta.get("not_before")
         if nb and now is not None:
             try:
@@ -236,8 +247,8 @@ def main():
         print(f"  already posted within slot {slot} window → skip", flush=True)
         return 0
 
-    # 3. queue 先頭取得
-    target = pick_queue_head(now)
+    # 3. queue 先頭取得 (target_slot ゲートに current slot を渡す)
+    target = pick_queue_head(now, current_slot=slot)
     if not target:
         print(f"  queue empty → skip", flush=True)
         return 0
