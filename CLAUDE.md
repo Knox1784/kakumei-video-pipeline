@@ -90,9 +90,11 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 投稿後 video_id を `publishing/publishing-state/<source>/<clip_id>.json` に記録
 
 ### 自動投稿 (2026-05-04〜 GHA 稼働中)
-- **GitHub Actions が毎日 6スロット (07:30 / 12:00 / 19:00 / 21:00 / 22:00 / 23:00 JST) で発火** (2026-05-07 拡張)
+- **GitHub Actions が毎日 2スロット (22:00 / 23:00 JST) で発火** (2026-05-20 夜帯集中に変更)
 - `publishing/queue/{clip_id}/{short.mp4, meta.json}` を git push しておけば、次のスロットで public 投稿
 - 1スロット=1本、queue 空ならスキップ
+- 朝/昼/夕方/21時の cron は廃止 (二重防御: cron 自体無し + active_slot=None でスキップ)
+- 個別 clip で「22 だけ」「23 だけ」と pinpoint したい場合は meta.json に `target_slot: "23:00"`
 - 失敗時は `auto-post-failure` ラベル付き Issue が自動作成
 - 詳細運用は **`publishing/AUTO_POST_RULES.md`** 参照
 
