@@ -1,0 +1,29 @@
+{
+  "clip_id": "29_GOMI_KURIPPER",
+  "title": "ゴミなクリッパーには金払わない #Shorts",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "video_id": "l2ImApyMcy8",
+  "url": "https://youtube.com/shorts/l2ImApyMcy8",
+  "privacy": "public",
+  "posted_at": "2026-05-30",
+  "made_public_at": "2026-05-30",
+  "posted_at_iso": "2026-05-30T22:32:01.349749+09:00",
+  "posted_slot": "22:00",
+  "source_video": "クリッパー集団計画.mp4",
+  "source_range_summary": "327-351 (ゴミなクリッパー + ペイパービュー定義)",
+  "duration_s": 16.29,
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "ショウマ",
+    "コタカ",
+    "クリッパー",
+    "ペイパービュー",
+    "成果報酬",
+    "ゴミ"
+  ],
+  "experiment_arm": "duration_15to25s_loop_natural_clippers",
+  "edit_style": "loop_friendly_tail",
+  "posted_via": "github-actions"
+}
