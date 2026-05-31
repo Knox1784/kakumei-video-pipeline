@@ -1,0 +1,25 @@
+{
+  "clip_id": "09_SENTAKU_SHUCHU",
+  "account_id": "kakumei_ikka",
+  "privacy": "public",
+  "source_video": "給料のあげかた.mov",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "experiment_arm": "duration_15to25s_loop_natural_kyuryo",
+  "edit_style": "loop_friendly_tail",
+  "title": "何をやらないかを決めろ #Shorts",
+  "description": "給料を上げる第一歩は「何をやらないか」を決めること。\n#給料の上げ方 #未来の総理大臣 #因幡匠瞬 #革命一家",
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "給料の上げ方",
+    "選択と集中",
+    "優先順位",
+    "仕事術"
+  ],
+  "duration_s": 13.49,
+  "not_before": "2026-06-04T23:00:00+09:00",
+  "target_slot": "23:00"
+}
