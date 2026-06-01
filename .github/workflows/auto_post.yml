@@ -3,12 +3,22 @@ name: YouTube Auto Post
 on:
   schedule:
     # JST → UTC (JST = UTC+9)。posting_schedule.yaml と同期させること。
-    # 2026-05-20 運用方針: 毎日 22:00 / 23:00 のみに絞る。 朝/昼/夕方/21時の cron を
-    # 完全に消すことで、 target_slot ゲート以前に GHA cron 自体が発火しない確実性を確保。
-    # target_slot 機能は dispatcher に残してあるので、 将来 22 だけ・23 だけと
-    # 個別 clip 単位で更に絞ることも可能。
-    - cron: '0 13 * * *'    # 22:00 JST (= 13:00 UTC)
-    - cron: '0 14 * * *'    # 23:00 JST (= 14:00 UTC)
+    # 2026-06-01 運用方針: GHA schedule はベストエフォートで run ごとドロップし得る
+    #   (6/1 に '0 13' / '0 14' が両方とも完全ドロップ = 投稿ゼロを観測)。対策として
+    #   (1) :00 の最混雑帯を避けたオフピーク分、(2) 各スロット 3回の冗長発火 に変更。
+    #   全試行が同時にドロップする確率を激減させる。
+    # 二重投稿は dispatcher の already_posted_in_slot (posted_slot exact match) +
+    #   queue dir 削除 + concurrency(group=auto-post) で防止 (先発が投稿+state push →
+    #   後発は最新を checkout し "already posted within slot → skip")。
+    # target_slot ゲートは引き続き有効 (各 clip を 22:00/23:00 に振り分け)。
+    # --- 22:00 JST 枠 (= 13:xx UTC) を 3回試行 ---
+    - cron: '11 13 * * *'   # 22:11 JST
+    - cron: '31 13 * * *'   # 22:31 JST
+    - cron: '51 13 * * *'   # 22:51 JST
+    # --- 23:00 JST 枠 (= 14:xx UTC) を 3回試行 ---
+    - cron: '11 14 * * *'   # 23:11 JST
+    - cron: '31 14 * * *'   # 23:31 JST
+    - cron: '51 14 * * *'   # 23:51 JST
   workflow_dispatch:        # 手動トリガー (テスト用)
 
 concurrency:
