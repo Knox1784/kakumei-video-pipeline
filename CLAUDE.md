@@ -89,8 +89,11 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 1日6本までのクォータ制約 (40本なら7日分散)
 - 投稿後 video_id を `publishing/publishing-state/<source>/<clip_id>.json` に記録
 
-### 自動投稿 (2026-05-04〜 GHA 稼働中)
-- **GitHub Actions が毎日 2スロット (22:00 / 23:00 JST) で発火**。各スロットは**オフピーク分で 3回ずつ冗長発火**する (2026-06-01: GHA schedule が run ごと完全ドロップ＝当日投稿ゼロを観測 → 多重試行で対策。二重投稿は dispatcher の投稿済み判定で防止)
+### 自動投稿 (2026-05-04〜 GHA 稼働 / 2026-06-02 launchd トリガ主化)
+- **主トリガ = launchd `com.kakumei.autopost`**: Mac が毎日 22:00 / 23:00 JST に `gh workflow run auto_post.yml` で GHA を起動する (定刻確実・GHA scheduler 非依存・スリープ時は起床時に追いつき)。投稿実行は GHA のまま = スケール維持。
+  - plist は **gh を直接起動** (`ProgramArguments=gh ... --repo Knox1784/kakumei-video-pipeline --ref main`)。⚠️ `~/Documents` は TCC で launchd から読めない (スクリプト経由は `can't open input file` で失敗) → gh 直叩き + ログは `~/Library/Logs/com.kakumei.autopost.*.log`。
+- **予備トリガ = GHA schedule cron**: 各スロット**オフピーク分で 3回ずつ冗長発火** (22:11/31/51・23:11/31/51 JST)。Mac off の日のフォールバック (2026-06-01: GHA schedule が run ごと完全ドロップ＝当日投稿ゼロを観測したため launchd を主化、cron は予備に降格)
+- **二重投稿防止**: launchd 経由 (workflow_dispatch) と cron 経由 (schedule) が重なっても dispatcher の `already_posted_in_slot` (posted_slot exact match) + queue dir 削除 + concurrency(group=auto-post) で 1本だけ投稿
 - `publishing/queue/{clip_id}/{short.mp4, meta.json}` を git push しておけば、次のスロットで public 投稿
 - 1スロット=1本、queue 空ならスキップ
 - 朝/昼/夕方/21時の cron は廃止 (二重防御: cron 自体無し + active_slot=None でスキップ)

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 参照コピー (live は ~/Library/LaunchAgents/com.kakumei.autopost.plist)。
+     launchd「起動専用」トリガ: 毎日 22:00 / 23:00 JST に gh で auto_post workflow を起動する。
+     インストール:
+       cp publishing/scripts/com.kakumei.autopost.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kakumei.autopost.plist
+       launchctl kickstart -k gui/$(id -u)/com.kakumei.autopost   # 即時テスト (スロット外なら skip)
+     ⚠️ ~/Documents は TCC で launchd から読めないため、スクリプト経由にせず gh を直起動する。
+        gh 認証は keychain (ユーザーログイン中なら可)。Mac off の日は GHA schedule cron が予備。 -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kakumei.autopost</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/gh</string>
+        <string>workflow</string>
+        <string>run</string>
+        <string>auto_post.yml</string>
+        <string>--repo</string>
+        <string>Knox1784/kakumei-video-pipeline</string>
+        <string>--ref</string>
+        <string>main</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/knoxv</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>22</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>23</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/Users/knoxv/Library/Logs/com.kakumei.autopost.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/knoxv/Library/Logs/com.kakumei.autopost.err.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
