@@ -1,0 +1,29 @@
+{
+  "clip_id": "05_TAKOYAKI_AI",
+  "title": "たこ焼き焼いてる場合じゃない #Shorts",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "video_id": "JFigaeKcAsE",
+  "url": "https://youtube.com/shorts/JFigaeKcAsE",
+  "privacy": "public",
+  "posted_at": "2026-06-03",
+  "made_public_at": "2026-06-03",
+  "posted_at_iso": "2026-06-03T23:00:31.072148+09:00",
+  "posted_slot": "23:00",
+  "source_video": "給料のあげかた.mov",
+  "source_range_summary": null,
+  "duration_s": 13.03,
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "給料の上げ方",
+    "AI",
+    "選択と集中",
+    "効率化"
+  ],
+  "experiment_arm": "duration_15to25s_loop_natural_kyuryo",
+  "edit_style": "loop_friendly_tail",
+  "posted_via": "github-actions"
+}
