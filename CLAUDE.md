@@ -100,6 +100,7 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 個別 clip で「22 だけ」「23 だけ」と pinpoint したい場合は meta.json に `target_slot: "23:00"`
 - 失敗時は `auto-post-failure` ラベル付き Issue が自動作成
 - 詳細運用は **`publishing/AUTO_POST_RULES.md`** 参照
+- **⚠️ 投稿が止まったら (第一歩)**: ① `gh run list --workflow=auto_post.yml` で発火確認 → ② `launchctl list | grep autopost` + `~/Library/Logs/com.kakumei.autopost.err.log` (exit 127 = `can't open input file` = TCC) → 詳細な診断ツリー・再構築手順・緊急手動投稿は **`AUTO_POST_RULES.md` の「🚨 投稿が止まった時のランブック」**。まず時刻が 22:00/23:00 を過ぎているか確認 (昼間の「未投稿」は正常)。
 
 ### post-monitor 自動チェック (2026-05-01〜 launchd 稼働中)
 - **launchd `com.kakumei.postmonitor` が毎日 08:00 起動** → `publishing/scripts/run_monitor.sh`
