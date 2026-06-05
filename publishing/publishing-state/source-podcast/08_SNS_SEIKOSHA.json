@@ -1,0 +1,29 @@
+{
+  "clip_id": "08_SNS_SEIKOSHA",
+  "title": "SNSは成功者しか映さない #Shorts",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "video_id": "tMq8obrWsPE",
+  "url": "https://youtube.com/shorts/tMq8obrWsPE",
+  "privacy": "public",
+  "posted_at": "2026-06-05",
+  "made_public_at": "2026-06-05",
+  "posted_at_iso": "2026-06-05T22:00:25.013323+09:00",
+  "posted_slot": "22:00",
+  "source_video": "給料のあげかた.mov",
+  "source_range_summary": null,
+  "duration_s": 18.17,
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "給料の上げ方",
+    "SNS",
+    "努力",
+    "継続"
+  ],
+  "experiment_arm": "duration_15to25s_loop_natural_kyuryo",
+  "edit_style": "loop_friendly_tail",
+  "posted_via": "github-actions"
+}
