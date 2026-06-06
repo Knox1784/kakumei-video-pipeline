@@ -53,9 +53,9 @@ Python/ffmpeg → ElevenLabs API key → Google Cloud OAuth → YouTube channel 
 
 ### 🟩 ZONE C — 投稿運用 (`publishing/`)
 
-ZONE A/B に加え、**投稿・配信の運用レイヤ** `publishing/` がある（新規・改造OK）。動画を `publishing/queue/` に置けば、GitHub Actions + Mac の launchd トリガで毎日 22:00 / 23:00 JST に自動で public 投稿される「発射台」モデル。
+ZONE A/B に加え、**投稿・配信の運用レイヤ** `publishing/` がある（新規・改造OK）。動画を `publishing/queue/` に置けば、GitHub Actions + Mac の launchd トリガで毎日 22:00 / 23:00 JST に自動で public 投稿される「発射台」モデル。**YouTube 投稿成功の直後、同じ clip が X (@kakumei1784) にもネイティブ動画として自動クロスポストされる**（2026-06-06〜・デフォルト全クリップON、meta.json `x_enabled: false` で個別OFF）。
 
-- **自動投稿の仕組み・運用・障害対応(投稿が止まった時の復旧ランブック)・確実なセットアップ手順は → `publishing/AUTO_POST_RULES.md`**
+- **自動投稿の仕組み・運用・障害対応(投稿が止まった時の復旧ランブック)・確実なセットアップ手順は → `publishing/AUTO_POST_RULES.md`**（X クロスポストの仕組み・X ランブックも同ファイル）
 - 投稿後の自動モニター(視聴維持率等)は → `publishing/scripts/README.md`
 
 ---
@@ -267,6 +267,7 @@ mkdir -p ~/Documents/Claude/Projects/shoma-podcasts/video-use
 - **clip-extractor** — 区間切り出し
 - **transformer** — 縦型+テロップ(video-useと役割重複、要統合検討)
 - **youtube-uploader** — 完成品アップロード
+- **x-uploader** — X (Twitter) クロスポスト (YouTube投稿成功後に dispatch が自動実行)
 - **post-monitor** — 投稿後アナリティクス
 
 ### 棲み分け
