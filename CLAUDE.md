@@ -100,6 +100,14 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 個別 clip で「22 だけ」「23 だけ」と pinpoint したい場合は meta.json に `target_slot: "23:00"`
 - 失敗時は `auto-post-failure` ラベル付き Issue が自動作成
 - 詳細運用は **`publishing/AUTO_POST_RULES.md`** 参照
+
+### X (Twitter) クロスポスト (2026-06-06〜)
+- **YouTube 投稿成功の直後、同じ short.mp4 が X (@kakumei1784) にも自動投稿される** (デフォルト全クリップ ON)
+- クリップ単位で止める: meta.json に `"x_enabled": false` / 本文個別指定: `"x_text"` (無ければ title 流用)
+- 実体 = `external_skills/x-uploader/` (OAuth 1.0a 4キー・無期限)。台帳 = `publishing/x_accounts.yaml`
+- 課金 = pay-per-use (~$0.015/投稿)。**本文に URL 禁止** ($0.20=13倍課金)
+- **X 失敗は YouTube に影響しない** (Issue `auto-post-failure-x` で通知・自動リトライ無し) → 対応は `AUTO_POST_RULES.md` の「X 投稿が止まった時」
+- 🚫 **X は革命一家1アカ (@kakumei1784) のみ**。複数アカへの同一/類似コンテンツ自動投稿は X 規約で禁止 (platform manipulation・一斉BAN実績)。**100アカ構想は X に持ち込まない**
 - **⚠️ 投稿が止まったら (第一歩)**: ① `gh run list --workflow=auto_post.yml` で発火確認 → ② `launchctl list | grep autopost` + `~/Library/Logs/com.kakumei.autopost.err.log` (exit 127 = `can't open input file` = TCC) → 詳細な診断ツリー・再構築手順・緊急手動投稿は **`AUTO_POST_RULES.md` の「🚨 投稿が止まった時のランブック」**。まず時刻が 22:00/23:00 を過ぎているか確認 (昼間の「未投稿」は正常)。
 
 ### post-monitor 自動チェック (2026-05-01〜 launchd 稼働中)
@@ -133,6 +141,7 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 | 動画render | ffmpeg + video-use | local |
 | 音mix | ffmpeg amix + loudnorm | local |
 | YouTube投稿 | youtube-uploader skill | YouTube Data API v3 |
+| X投稿 | x-uploader skill | X API v2 (/2/media/upload + /2/tweets, OAuth 1.0a) |
 | 投稿後分析 | post-monitor skill | YouTube Analytics API v2 |
 
 ---
@@ -143,3 +152,4 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 |---|---|
 | 2026-04-27 | 初版作成。audio設計の永続化、ルール文書二層構造を確立 |
 | 2026-05-07 | 編集スタイル型レジストリ (`publishing/EDIT_STYLES.md`) 追加。スロット 4→6 拡張 (22:00/23:00 追加) |
+| 2026-06-06 | X (Twitter) クロスポスト追加 (`external_skills/x-uploader/` + dispatch_queue.py チェーン)。X は1アカ限定 |

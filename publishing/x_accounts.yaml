@@ -1,0 +1,42 @@
+# =============================================================================
+# X (Twitter) アカウント台帳
+# =============================================================================
+# ⚠️ X ポリシー上の大原則: 複数アカウントへの同一/類似コンテンツ自動投稿は
+#    platform manipulation として禁止 (2026-03 に一斉BAN実績)。
+#    YouTube の 100 アカ構想は X には適用しない。X 展開は 1 アカのみ。
+#
+# 新規追加時の手順 (基本やらない — 上記ポリシー参照):
+#   1) developer.x.com → Developer Console → アプリ作成
+#   2) アプリ権限を Read and Write に設定 → その後に Access Token & Secret 生成
+#      (⚠️ 順序を逆にすると Read-only トークンになり投稿が 403)
+#   3) 4キーを publishing/tokens/x/{id}.json に保存
+#      {api_key, api_key_secret, access_token, access_token_secret}
+#   4) python3 external_skills/x-uploader/scripts/upload.py --verify \
+#        --token publishing/tokens/x/{id}.json
+#   5) gh secret set X_TOKEN_<ID_UPPER> < publishing/tokens/x/{id}.json
+#   6) .github/workflows/auto_post.yml の Restore X tokens ステップに env 行追加
+#   7) このファイルに1エントリ追記
+# =============================================================================
+
+# 課金モデル: pay-per-use (2026-02-06〜 Free/Basic 新規終了)
+#   - 投稿 ~$0.015/リクエスト、URL入り投稿は $0.20 (13倍! → 使わない)
+#   - 自動チャージ ON: 残高 $1 で $10 自動補充 / 請求サイクル上限 $10
+#   - 残高・使用状況: developer.x.com Console → 請求書作成 → クレジット
+billing: pay-per-use
+auto_recharge: "残高$1で$10チャージ (2026-06-06設定)"
+spending_limit_per_cycle: "$10.00"
+
+accounts:
+  - id: kakumei_ikka
+    token_file: tokens/x/kakumei_ikka.json
+    handle: "@kakumei1784"
+    url: https://x.com/kakumei1784
+    app_name: "\"しょうまの革命一家\"アカX自動投稿システム"
+    purpose: 革命一家ショート動画のクロスポスト先 (YouTube 投稿成功後に自動投稿)
+    authorized_at: 2026-06-06
+    gha_secret: X_TOKEN_KAKUMEI_IKKA
+    notes: |
+      認証 = OAuth 1.0a user context (4キー・無期限・ローテーション無し)。
+      token JSON には bearer_token も保存してあるが投稿には未使用 (将来の read 用)。
+      キー漏洩/401 時: Developer Console でキー再生成 → token JSON 更新 →
+      gh secret set X_TOKEN_KAKUMEI_IKKA < publishing/tokens/x/kakumei_ikka.json

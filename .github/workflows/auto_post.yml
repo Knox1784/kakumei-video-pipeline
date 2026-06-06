@@ -31,6 +31,9 @@ permissions:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    # X 投稿ハング等の暴走が 23:00 スロットを潰さないための上限
+    # (デフォルト 6h だと concurrency group が次スロットの run をブロックし得る)
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,7 +44,8 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 pyyaml
+        # requests/requests-oauthlib は X クロスポスト用 (pin で夜間 resolve 事故を防止)
+        run: pip install google-api-python-client google-auth-oauthlib google-auth-httplib2 pyyaml 'requests>=2,<3' 'requests-oauthlib>=1.3,<3'
 
       - name: Restore tokens from secrets
         # 命名規則: YT_TOKEN_<account_id_upper> → publishing/tokens/youtube/<account_id_lower>.json
@@ -71,6 +75,34 @@ jobs:
           # 少なくとも1つ書けていることを確認
           test -n "$(ls publishing/tokens/youtube/*.json 2>/dev/null)" || (echo "❌ no tokens written"; exit 1)
 
+      - name: Restore X tokens (best-effort)
+        # 命名規則: X_TOKEN_<account_id_upper> → publishing/tokens/x/<account_id_lower>.json
+        # ⚠️ YouTube の Restore とは独立ステップ。X 未セットアップ/secret 不正でも
+        #    絶対に fail しない (exit 1 禁止) — YouTube フロー保護のため。
+        #    secret 不正時は x_failure.json marker → "Report X failure" で Issue 化。
+        continue-on-error: true
+        env:
+          X_TOKEN_KAKUMEI_IKKA: ${{ secrets.X_TOKEN_KAKUMEI_IKKA }}
+        run: |
+          mkdir -p publishing/tokens/x
+          for var in $(env | grep -oE '^X_TOKEN_[A-Z0-9_]+' | sort -u); do
+            account=$(echo "${var#X_TOKEN_}" | tr 'A-Z' 'a-z')
+            value=$(printenv "$var" || true)
+            if [ -z "$value" ]; then
+              echo "ℹ️ $var is empty/unset → skip (X 未セットアップは正常)"
+              continue
+            fi
+            printf '%s' "$value" > "publishing/tokens/x/${account}.json"
+            # 4キー検証 — 欠落なら warning + marker (exit 1 はしない)
+            if python3 -c "import json; d=json.load(open('publishing/tokens/x/${account}.json')); assert all(d.get(k) for k in ('api_key','api_key_secret','access_token','access_token_secret'))" 2>/dev/null; then
+              echo "✅ wrote publishing/tokens/x/${account}.json"
+            else
+              echo "⚠️ ${account}.json malformed (4キー欠落) — X 投稿は skip されます。Secret 再登録が必要"
+              printf '{"clip_id": null, "error": "X token malformed for %s (4キー欠落。gh secret set X_TOKEN_%s で再登録)", "at": "%s"}\n' "$account" "$(echo "$account" | tr 'a-z' 'A-Z')" "$(date -u +%FT%TZ)" > x_failure.json
+              rm -f "publishing/tokens/x/${account}.json"
+            fi
+          done
+
       - name: Dispatch queue
         id: dispatch
         shell: bash
@@ -93,6 +125,50 @@ jobs:
             git commit -m "auto-post: dispatch queue $(date -u +%FT%TZ)"
             git push
           fi
+
+      - name: Report X failure
+        # x_failure.json は「YouTube は成功したが X 投稿に失敗した」時のみ存在する。
+        # dispatch は X 失敗でも exit 0 (= job success) のため if: failure() では絶対に
+        # 発火しない。always() + ファイル存在チェックで判定する。
+        # サーキットブレーカー: open Issue (label: auto-post-failure-x) が既にあれば
+        # comment 追記 (連続失敗で Issue が毎スロット増殖するのを防ぐ)。
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('x_failure.json')) return;
+            let detail = '(unreadable)';
+            try { detail = fs.readFileSync('x_failure.json', 'utf8'); } catch (e) {}
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `Workflow run: ${runUrl}`,
+              '',
+              'YouTube 投稿は成功・X クロスポストのみ失敗 (自動リトライ無し — queue は消化済み)。',
+              '対応手順: publishing/AUTO_POST_RULES.md の「X 投稿が止まった時」参照。',
+              '',
+              '```json',
+              detail.slice(0, 3000),
+              '```',
+            ].join('\n');
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'auto-post-failure-x', state: 'open', per_page: 1,
+            });
+            if (issues.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `X 投稿が再び失敗 (${new Date().toISOString()})\n\n${body}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: '❌ X (Twitter) クロスポスト失敗 — auto-post',
+                body,
+                labels: ['auto-post-failure-x'],
+              });
+            }
 
       - name: Open issue on failure
         if: failure()

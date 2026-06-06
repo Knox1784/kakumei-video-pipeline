@@ -50,10 +50,23 @@ GitHub Actions が `publishing/posting_schedule.yaml` で定義されたスロ�
 | `privacy` | デフォルト public | `public` / `unlisted` / `private` |
 | `source_video` ほか | 推奨 | 後の analytics 改善ループで参照 |
 
+### X クロスポスト用フィールド (全て optional・2026-06-06〜)
+
+YouTube 投稿成功後、同じ short.mp4 が X (@kakumei1784) にも自動投稿される。
+
+| フィールド | デフォルト | 内容 |
+|---|---|---|
+| `x_enabled` | `true` | `false` でこのクリップだけ X 投稿をスキップ |
+| `x_text` | title から `#Shorts` 除去 | ツイート本文 (日本語実質140字、超過は自動切詰め。**URL 禁止** = 13倍課金) |
+| `x_account_id` | `account_id` と同値 | `publishing/tokens/x/{x_account_id}.json` と一致 |
+
+- X 投稿は `privacy: "public"` のクリップのみ (X に限定公開は無い)
+- X 失敗しても YouTube 投稿と queue 消化はそのまま成立 (Issue `auto-post-failure-x` で通知・自動リトライ無し)
+
 ## スロット時刻
 
 現在の運用 (`publishing/posting_schedule.yaml`):
-- 07:30 / 12:00 / 19:00 / 21:00 JST
+- 22:00 / 23:00 JST
 
 スロット変更時は `posting_schedule.yaml` + `.github/workflows/auto_post.yml` の cron 行を**両方**編集。
 

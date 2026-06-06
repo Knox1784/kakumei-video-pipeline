@@ -62,6 +62,67 @@ meta.json の optional フィールド:
 
 ---
 
+## 🐦 X (Twitter) クロスポスト (2026-06-06〜)
+
+YouTube 投稿成功の直後、**同じ short.mp4 が X (@kakumei1784) にもネイティブ動画として自動投稿**される。
+
+```
+dispatch_queue.py:
+  YouTube 投稿成功 → state 書込み
+    → X クロスポスト (external_skills/x-uploader/scripts/upload.py)
+        ├ 720x1280 に自動縮小 (X の解像度上限 = 長辺1280)
+        ├ v2 chunked media upload → POST /2/tweets
+        └ 成功/失敗を state JSON の x_post キーに記録
+    → queue dir 削除 + git push
+```
+
+- **デフォルト全クリップ ON**。クリップ単位で止めるには meta.json に `"x_enabled": false`
+- 本文 = meta.json `x_text`、無ければ title から `#Shorts` 除去 (日本語実質140字・自動切詰め)
+- `privacy != "public"` のクリップは X には投稿しない (X に限定公開は無い)
+- **X 失敗は YouTube 側に一切影響しない** (state 記録 + Issue `auto-post-failure-x` のみ。
+  exit code を汚すと state 未push → YouTube 二重投稿になるため、構造的に exit 0 を維持)
+- **X 失敗の自動リトライは無い** (queue は YouTube 成功時点で消化済み)。再投稿は手動 (下記ランブック)
+- 認証 = OAuth 1.0a 4キー (無期限)。台帳: `publishing/x_accounts.yaml` / トークン: `publishing/tokens/x/`
+- 課金 = **pay-per-use** (~$0.015/投稿、月60本≈$1-4)。自動チャージ ON ($1で$10補充)。
+  **本文に URL を入れない** ($0.20/投稿 = 13倍課金 + リーチ低下)
+- 🚫 **ポリシー大原則: X は革命一家1アカのみ**。複数アカへの同一/類似コンテンツ自動投稿は
+  platform manipulation として禁止 (一斉BAN実績あり)。YouTube の 100 アカ構想は X に持ち込まない
+
+### 🚨 X 投稿が止まった時 (ランブック)
+
+> YouTube は投稿されているが X に出ていない / `auto-post-failure-x` Issue が来た時。
+
+1. **Issue body のエラーを見る** → 401 / 403 / 429 / timeout で分岐:
+
+| エラー | 原因 | 対処 |
+|---|---|---|
+| `401 認証エラー` | 4キー無効/失効 | Developer Console でキー再生成 → `publishing/tokens/x/kakumei_ikka.json` 更新 → `gh secret set X_TOKEN_KAKUMEI_IKKA < publishing/tokens/x/kakumei_ikka.json` |
+| `403 Forbidden` | ①アプリ権限が Read-only ②権限変更後に Access Token 未再生成 ③クレジット残高ゼロ | ①② Console で Read and Write 確認 → **Access Token を再生成** → token/Secret 更新。③ Console → 請求書作成 → クレジット (自動チャージ確認) |
+| `429 レート上限` | 24h キャップ到達 | 翌日自然回復。テスト投稿の撃ちすぎに注意 |
+| `timeout` / `動画処理が...完了しません` | X 側の動画処理遅延 | 単発なら放置可 (次スロットは別クリップで正常化)。連発なら手動再投稿で再現確認 |
+| `X token malformed (4キー欠落)` | Secret の中身が壊れている | ローカルの token JSON を `--verify` で確認してから `gh secret set` し直す |
+
+2. **認証の生存確認** (read のみ・課金最小):
+```bash
+python3 external_skills/x-uploader/scripts/upload.py --verify \
+  --token publishing/tokens/x/kakumei_ikka.json
+```
+
+3. **失敗したクリップの手動再投稿** (動画は YouTube に出ているので state JSON から特定):
+```bash
+# state の x_post.status=="failed" のクリップを探す
+grep -l '"status": "failed"' publishing/publishing-state/source-podcast/*.json
+# 動画は queue から消えているので Zone B の short_final.mp4 を使う
+python3 external_skills/x-uploader/scripts/upload.py \
+  --video <Zone B の short_final.mp4> --text "本文" \
+  --token publishing/tokens/x/kakumei_ikka.json
+# 成功したら state JSON の x_post を手で書き換え (tweet_id/url)
+```
+
+4. **連続失敗中の Issue は1本に集約**される (既存 open Issue に comment 追記)。直ったら Issue を close。
+
+---
+
 ## 🚨 投稿が止まった時のランブック
 
 > 症状「YouTube に出ていない / queue が減らない」。上から順に。コマンドは全て読み取り専用（安全）。
@@ -187,7 +248,10 @@ gh workflow run auto_post.yml --repo Knox1784/kakumei-video-pipeline --ref main
 | `publishing/scripts/dispatch_queue.py` | スロット判定 + queue 消化 + 二重防止 (`posted_slot` exact match) |
 | `.github/workflows/auto_post.yml` | GHA 本体 (予備 cron + token 復元 + 投稿 + state push + Issue) |
 | `publishing/queue/{clip_id}/` | 投稿待ちの動画 + meta.json |
-| `publishing/publishing-state/source-podcast/` | 投稿後の記録 (post-monitor が読む) |
+| `publishing/publishing-state/source-podcast/` | 投稿後の記録 (post-monitor が読む)。X 結果は `x_post` キー |
+| `external_skills/x-uploader/scripts/upload.py` | X 投稿実体 (720x1280 縮小 + v2 media upload + /2/tweets) |
+| `publishing/x_accounts.yaml` | X アカウント台帳 (pay-per-use 課金・1アカ限定ポリシー) |
+| `publishing/tokens/x/{account_id}.json` | X OAuth 1.0a 4キー (gitignore。GHA は Secret `X_TOKEN_<ID>` から復元) |
 
 ## スケール上限と移行ポイント
 

@@ -3,6 +3,8 @@
 # =====================================================================
 publishing/tokens/
 publishing/credentials/
+# X クロスポスト失敗 marker (GHA run 内のみの一時ファイル。Report X failure が読む)
+x_failure.json
 video-use/.env
 .env
 .env.local

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GitHub Actions YouTube 自動投稿ディスパッチャ
+GitHub Actions YouTube 自動投稿ディスパッチャ (+ X クロスポスト)
 
 責務:
   1. publishing/posting_schedule.yaml からスロット定義を読む
@@ -9,7 +9,10 @@ GitHub Actions YouTube 自動投稿ディスパッチャ
   4. publishing/queue/*/ をディレクトリ名昇順 sort、先頭の meta.json を読む
   5. account_id に対応するトークンで external_skills/youtube-uploader/scripts/upload.py を起動
   6. 成功: queue ディレクトリ削除 + publishing-state JSON 生成
-  7. 失敗: stderr 出力後 sys.exit(1) → GHA で Issue 化
+  6b. X クロスポスト (x_enabled=true デフォルト): external_skills/x-uploader を起動。
+      ⚠️ X 失敗は state に記録 + x_failure.json marker を書くのみで exit code を絶対に汚さない
+      (exit 1 にすると state 未push → 次 cron で YouTube 二重投稿になるため)
+  7. 失敗 (YouTube 投稿前のみ): stderr 出力後 sys.exit(1) → GHA で Issue 化
 
 呼び出し: GitHub Actions cron (4スロット時刻に発火) または手動 (workflow_dispatch)
 """
@@ -31,6 +34,14 @@ QUEUE_DIR = ROOT / "publishing/queue"
 STATE_DIR = ROOT / "publishing/publishing-state/source-podcast"
 TOKENS_DIR = ROOT / "publishing/tokens/youtube"
 UPLOADER = ROOT / "external_skills/youtube-uploader/scripts/upload.py"
+
+# --- X (Twitter) クロスポスト ---
+X_TOKENS_DIR = ROOT / "publishing/tokens/x"
+X_UPLOADER = ROOT / "external_skills/x-uploader/scripts/upload.py"
+# YouTube 成功 + X 失敗の時のみ書かれる marker。GHA の "Report X failure" ステップが
+# これを見て Issue 化する (repo root = GITHUB_WORKSPACE 直下。.gitignore 済)
+X_FAILURE_MARKER = ROOT / "x_failure.json"
+X_SUBPROCESS_TIMEOUT = 300  # 秒。X ハングが 23:00 スロットを潰さないための上限
 
 
 def load_schedule() -> dict:
@@ -161,23 +172,12 @@ def pick_queue_head(now: datetime | None = None, current_slot: str | None = None
     return None
 
 
-def upload_video(video_path: Path, meta: dict, token_path: Path) -> dict:
-    """upload.py をサブプロセス起動。stdout の JSON を返す。"""
-    cmd = [
-        sys.executable, str(UPLOADER),
-        "--video", str(video_path),
-        "--title", meta["title"],
-        "--description", meta.get("description", ""),
-        "--tags", ",".join(meta.get("tags", [])),
-        "--privacy", meta.get("privacy", "public"),
-        "--token", str(token_path),
-    ]
-    print(f"  $ upload.py {meta['title']!r} ({meta.get('privacy', 'public')})", flush=True)
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(f"upload.py failed: {r.stderr.strip()[-2000:]}")
-    # upload.py の出力末尾にある JSON ブロックを抽出 (整形済 multi-line)
-    out = r.stdout
+def extract_json_block(out: str) -> dict:
+    """stdout 末尾の JSON ブロックを抽出 (整形済 multi-line)。
+
+    youtube-uploader / x-uploader 共通の出力契約。
+    ⚠️ 既存 YouTube パスの load-bearing ロジックの純粋切出し — 挙動変更禁止。
+    """
     end = out.rfind("}")
     if end == -1:
         raise RuntimeError(f"upload.py 出力に '}}' がない: {out[-500:]}")
@@ -195,6 +195,104 @@ def upload_video(video_path: Path, meta: dict, token_path: Path) -> dict:
     if start == -1:
         raise RuntimeError(f"upload.py 出力に対応する '{{' がない: {out[-500:]}")
     return json.loads(out[start:end + 1])
+
+
+def upload_video(video_path: Path, meta: dict, token_path: Path) -> dict:
+    """upload.py をサブプロセス起動。stdout の JSON を返す。"""
+    cmd = [
+        sys.executable, str(UPLOADER),
+        "--video", str(video_path),
+        "--title", meta["title"],
+        "--description", meta.get("description", ""),
+        "--tags", ",".join(meta.get("tags", [])),
+        "--privacy", meta.get("privacy", "public"),
+        "--token", str(token_path),
+    ]
+    print(f"  $ upload.py {meta['title']!r} ({meta.get('privacy', 'public')})", flush=True)
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"upload.py failed: {r.stderr.strip()[-2000:]}")
+    return extract_json_block(r.stdout)
+
+
+def _write_x_failure_marker(clip_id: str, error: str, now: datetime):
+    """GHA "Report X failure" ステップ用の marker (.gitignore 済・commit されない)。"""
+    try:
+        X_FAILURE_MARKER.write_text(json.dumps(
+            {"clip_id": clip_id, "error": error[-2000:], "at": now.isoformat()},
+            ensure_ascii=False, indent=2,
+        ) + "\n")
+    except Exception as e:  # marker 書込み失敗すら exit code を汚さない
+        print(f"  ⚠️ x_failure marker 書込み失敗: {e}", flush=True)
+
+
+def post_to_x(video_path: Path, meta: dict, now: datetime) -> dict | None:
+    """YouTube 投稿成功後の X クロスポスト。
+
+    戻り値: x_post dict (成功 or {"status":"failed",...}) / None (skip)。
+    ⚠️ 不変条件: この関数は絶対に raise しない。X の失敗で exit code が汚れると
+    state 未push → 次 cron で YouTube 二重投稿になる (呼び出し側にも二重ガードあり)。
+    """
+    clip_id = meta.get("clip_id", "?")
+    try:
+        # ゲート 1: クリップ単位 opt-out (デフォルト ON)
+        if not meta.get("x_enabled", True):
+            print("  ⏭ X: x_enabled=false → skip", flush=True)
+            return None
+        # ゲート 2: X に限定公開は無い → public のみクロスポスト
+        if meta.get("privacy", "public") != "public":
+            print(f"  ⏭ X: privacy={meta.get('privacy')} (≠public) → skip", flush=True)
+            return None
+        # ゲート 3: トークン存在
+        x_account_id = meta.get("x_account_id") or meta.get("account_id", "kakumei_ikka")
+        token_path = X_TOKENS_DIR / f"{x_account_id}.json"
+        if not token_path.exists():
+            if meta.get("x_account_id"):
+                # meta が明示指定したアカのトークンが無い = 設定ミス疑い → Issue 化
+                msg = f"x_account_id={x_account_id} のトークンが無い: {token_path}"
+                print(f"  ⚠️ X: {msg}", flush=True)
+                _write_x_failure_marker(clip_id, msg, now)
+                return {"status": "failed", "error": msg, "account_id": x_account_id}
+            # デフォルトアカのトークン不在 = X 未セットアップの正常状態 → 静かに skip
+            print(f"  ⏭ X: token not found ({token_path.name}) → skip (X 未セットアップ)", flush=True)
+            return None
+
+        # 本文: x_text 優先、無ければ title から "#Shorts" 除去
+        text = (meta.get("x_text") or meta["title"].replace("#Shorts", "")).strip()
+
+        cmd = [
+            sys.executable, str(X_UPLOADER),
+            "--video", str(video_path),
+            "--text", text,
+            "--token", str(token_path),
+        ]
+        print(f"  $ x-uploader/upload.py {text!r}", flush=True)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=X_SUBPROCESS_TIMEOUT)
+        if r.returncode != 0:
+            raise RuntimeError(f"x-uploader failed: {r.stderr.strip()[-2000:]}")
+        result = extract_json_block(r.stdout)
+        print(f"  ✅ X posted: {result.get('url')}", flush=True)
+        return {
+            "tweet_id": result["tweet_id"],
+            "url": result["url"],
+            "text": result.get("text", text),
+            "posted_at_iso": now.isoformat(),
+            "account_id": x_account_id,
+        }
+    except BaseException as e:  # TimeoutExpired 含む全例外を吸収
+        err = str(e)
+        print(f"  ❌ X post failed (YouTube は成功済・処理続行): {err[-500:]}", flush=True)
+        _write_x_failure_marker(clip_id, err, now)
+        return {"status": "failed", "error": err[-2000:]}
+
+
+def append_x_post_to_state(clip_id: str, x_post: dict):
+    """投稿済み state JSON に x_post キーを追記 (state 本体は YouTube 成功時に書込み済)。"""
+    path = STATE_DIR / f"{clip_id}.json"
+    state = json.loads(path.read_text())
+    state["x_post"] = x_post
+    path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n")
+    print(f"  → x_post appended: {path.relative_to(ROOT)}", flush=True)
 
 
 def write_state(meta: dict, upload_result: dict, now: datetime, slot_str: str | None = None):
@@ -264,11 +362,30 @@ def main():
         raise RuntimeError(f"uploader not found: {UPLOADER}")
 
     # 5. アップロード
-    result = upload_video(target / "short.mp4", meta, token_path)
+    video_path = target / "short.mp4"
+    result = upload_video(video_path, meta, token_path)
     print(f"  ✅ uploaded: {result['url']}", flush=True)
 
     # 6. state 生成 (posted_slot 含む) → queue 削除
+    #    ⚠️ X より先に YouTube の記録と queue 削除を完結させる
+    #    (X がどう失敗/ハングしても二重投稿防止の3層が成立した状態を保つ)
     write_state(meta, result, now, slot_str=slot)
+
+    # 6b. X クロスポスト (queue 削除前 = short.mp4 がまだ存在するうちに実行)
+    #     post_to_x は内部で全例外を吸収するが、呼び出し側でも二重ガード
+    #     (どんな例外でも exit 0 を守る — 汚すと次 cron で YouTube 二重投稿)
+    try:
+        x_post = post_to_x(video_path, meta, now)
+    except BaseException as e:
+        print(f"  ❌ X post failed (outer guard): {e}", flush=True)
+        _write_x_failure_marker(meta.get("clip_id", "?"), str(e), now)
+        x_post = {"status": "failed", "error": str(e)[-2000:]}
+    if x_post is not None:
+        try:
+            append_x_post_to_state(meta["clip_id"], x_post)
+        except BaseException as e:
+            print(f"  ⚠️ x_post state 追記失敗 (続行): {e}", flush=True)
+
     shutil.rmtree(target)
     print(f"  → queue dir removed: {target.relative_to(ROOT)}", flush=True)
     print(f"=== dispatch_queue end (success) ===", flush=True)
