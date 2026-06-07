@@ -101,6 +101,7 @@ dispatch_queue.py:
 | `429 レート上限` | 24h キャップ到達 | 翌日自然回復。テスト投稿の撃ちすぎに注意 |
 | `timeout` / `動画処理が...完了しません` | X 側の動画処理遅延 | 単発なら放置可 (次スロットは別クリップで正常化)。連発なら手動再投稿で再現確認 |
 | `X token malformed (4キー欠落)` | Secret の中身が壊れている | ローカルの token JSON を `--verify` で確認してから `gh secret set` し直す |
+| `FileNotFoundError: 'ffprobe'` | ランナーに ffmpeg が無い (2026-06-06/07 の2晩これで X 全滅) | auto_post.yml の「Install ffmpeg」ステップが存在・成功しているか確認 |
 
 2. **認証の生存確認** (read のみ・課金最小):
 ```bash
