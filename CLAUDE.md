@@ -110,6 +110,17 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 - 🚫 **X は革命一家1アカ (@kakumei1784) のみ**。複数アカへの同一/類似コンテンツ自動投稿は X 規約で禁止 (platform manipulation・一斉BAN実績)。**100アカ構想は X に持ち込まない**
 - **⚠️ 投稿が止まったら (第一歩)**: ① `gh run list --workflow=auto_post.yml` で発火確認 → ② `launchctl list | grep autopost` + `~/Library/Logs/com.kakumei.autopost.err.log` (exit 127 = `can't open input file` = TCC) → 詳細な診断ツリー・再構築手順・緊急手動投稿は **`AUTO_POST_RULES.md` の「🚨 投稿が止まった時のランブック」**。まず時刻が 22:00/23:00 を過ぎているか確認 (昼間の「未投稿」は正常)。
 
+### Meta クロスポスト (FB Reels / IG Reels / Threads) (2026-06-06〜)
+- **YouTube 投稿成功後 (X の次に)、同じ short.mp4 が Facebook Page (Reels)・Instagram (Reels)・Threads (動画+本文) にも自動投稿される** (デフォルト全クリップ ON・トークン未設定の platform は silent skip)
+- クリップ単位 OFF: meta.json に `meta_enabled: false` (マスター) / `fb_enabled` / `ig_enabled` / `threads_enabled`。本文個別指定: `fb_description` / `ig_caption` / `threads_text`
+- 実体 = `external_skills/meta-uploader/` (1 skill 3 platform、`--platform` で切替)。台帳 = `publishing/meta_accounts.yaml`、セットアップ = `publishing/SETUP_META.md`
+- 認証は **2 App 構成** (公式制約): App A = FB+IG 共用の**無期限 Page token** (`tokens/meta/`) / App B = Threads **60日 token** (`tokens/threads/`、auto_post.yml が7日毎自動 refresh + Secret 書き戻し。要 `GH_PAT_SECRETS`)
+- **Meta 失敗は YouTube/X に影響しない** (platform 毎に独立・Issue label `auto-post-failure-meta`・自動リトライ無し) → 対応は `AUTO_POST_RULES.md` の「Meta 投稿が止まった時」
+- ⚠️ **queue 配置は必ず `publishing/scripts/prepare_queue_clip.py` 経由** (音声 128kbps 正規化。素の cp だと IG に確定リジェクト + Threads は commit 済み bytes を fetch するため投稿時に直せない)
+- Threads の動画は **GITHUB_SHA 固定 raw URL** を Meta が fetch (= repo public が前提。private 化すると Threads だけ止まる)
+- 🚫 **Meta も各プラットフォーム1アカのみ** (FB Page / IG / Threads 各1)。複数アカ同一コンテンツは CIB として一括BAN — **100アカ構想は Meta に持ち込まない** (X と同じ)。✅ 自ブランドの3プラットフォーム同時展開自体は Meta 公式に明示許可 (2025-07 ポリシー)
+- 課金: Meta API は無料
+
 ### post-monitor 自動チェック (2026-05-01〜 launchd 稼働中)
 - **launchd `com.kakumei.postmonitor` が毎日 08:00 起動** → `publishing/scripts/run_monitor.sh`
 - `publishing-state/source-podcast/*.json` を全件 glob、`privacy=="public"` のみ対象
@@ -142,6 +153,7 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 | 音mix | ffmpeg amix + loudnorm | local |
 | YouTube投稿 | youtube-uploader skill | YouTube Data API v3 |
 | X投稿 | x-uploader skill | X API v2 (/2/media/upload + /2/tweets, OAuth 1.0a) |
+| FB/IG/Threads投稿 | meta-uploader skill | Graph API v25.0 (video_reels / media+rupload) + Threads API (graph.threads.net) |
 | 投稿後分析 | post-monitor skill | YouTube Analytics API v2 |
 
 ---
@@ -153,3 +165,4 @@ ZONE A (video-use本体) を改造せず、プロジェクト全体の運用ル�
 | 2026-04-27 | 初版作成。audio設計の永続化、ルール文書二層構造を確立 |
 | 2026-05-07 | 編集スタイル型レジストリ (`publishing/EDIT_STYLES.md`) 追加。スロット 4→6 拡張 (22:00/23:00 追加) |
 | 2026-06-06 | X (Twitter) クロスポスト追加 (`external_skills/x-uploader/` + dispatch_queue.py チェーン)。X は1アカ限定 |
+| 2026-06-06 | Meta クロスポスト追加 (`external_skills/meta-uploader/`: FB Reels / IG Reels / Threads)。2 App 構成・queue 配置は prepare_queue_clip.py 必須・Meta も1アカ限定 |

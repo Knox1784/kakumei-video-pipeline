@@ -5,6 +5,8 @@ publishing/tokens/
 publishing/credentials/
 # X クロスポスト失敗 marker (GHA run 内のみの一時ファイル。Report X failure が読む)
 x_failure.json
+# Meta (FB/IG/Threads) クロスポスト失敗 marker (同上。Report Meta failure が読む)
+meta_failure.json
 video-use/.env
 .env
 .env.local
@@ -61,7 +63,8 @@ publishing/audio/sfx/*.wav
 # Publishing state & logs
 # =====================================================================
 # publishing-state は GHA auto-post と post-monitor が共有するため git 管理
-# (動画ID/視聴数等を含むが、private repo なので問題なし)
+# (動画ID/視聴数等を含む。⚠️ repo は PUBLIC — 公開済み投稿のメタデータのみなので可。
+#  トークン/エラー詳細など秘匿情報は絶対にここに書かないこと)
 publishing/scripts/logs/
 !publishing/scripts/logs/.gitkeep
 

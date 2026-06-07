@@ -12,6 +12,10 @@ GitHub Actions YouTube 自動投稿ディスパッチャ (+ X クロスポスト
   6b. X クロスポスト (x_enabled=true デフォルト): external_skills/x-uploader を起動。
       ⚠️ X 失敗は state に記録 + x_failure.json marker を書くのみで exit code を絶対に汚さない
       (exit 1 にすると state 未push → 次 cron で YouTube 二重投稿になるため)
+  6c. Meta クロスポスト (meta_enabled=true デフォルト): external_skills/meta-uploader を
+      platform 毎 (facebook/instagram/threads) に独立起動。FB 失敗が IG/Threads を止めない。
+      ⚠️ X と同じ不変条件 (exit 0 死守)。失敗は meta_failure.json (failures[] 配列) → Issue 化。
+      Threads は GITHUB_SHA 固定の raw URL を fetch させる (repo public 前提・バイナリ不可)
   7. 失敗 (YouTube 投稿前のみ): stderr 出力後 sys.exit(1) → GHA で Issue 化
 
 呼び出し: GitHub Actions cron (4スロット時刻に発火) または手動 (workflow_dispatch)
@@ -19,11 +23,15 @@ GitHub Actions YouTube 自動投稿ディスパッチャ (+ X クロスポスト
 from __future__ import annotations
 
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
+import time as time_mod
 from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import yaml
@@ -42,6 +50,32 @@ X_UPLOADER = ROOT / "external_skills/x-uploader/scripts/upload.py"
 # これを見て Issue 化する (repo root = GITHUB_WORKSPACE 直下。.gitignore 済)
 X_FAILURE_MARKER = ROOT / "x_failure.json"
 X_SUBPROCESS_TIMEOUT = 300  # 秒。X ハングが 23:00 スロットを潰さないための上限
+
+# --- Meta (Facebook Page Reels / Instagram Reels / Threads) クロスポスト ---
+META_TOKENS_DIR = ROOT / "publishing/tokens/meta"          # App A (FB+IG 共用・無期限 Page token)
+THREADS_TOKENS_DIR = ROOT / "publishing/tokens/threads"    # App B (60日 token・自動 refresh)
+META_UPLOADER = ROOT / "external_skills/meta-uploader/scripts/upload.py"
+# X と同型の marker だが failures[] 配列 (1 run で複数 platform が失敗し得るため)
+META_FAILURE_MARKER = ROOT / "meta_failure.json"
+# platform 毎の subprocess 上限 (IG はコンテナ再試行があるため長め)
+META_PLATFORM_TIMEOUTS = {"facebook": 300, "instagram": 420, "threads": 360}
+# Meta チェーン全体の wall-clock 上限。超過した platform は skipped_deadline 記録。
+# job timeout (30min) による kill = state 未push = 二重投稿、を構造的に防ぐための予算
+META_CHAIN_DEADLINE_S = 720
+
+# トークン漏洩スクラバー (repo/Issue が public のため marker/state へ書く前に必ず通す)
+_TOKEN_PATTERNS = [
+    re.compile(r"access_token=[^&\s\"']+"),
+    re.compile(r"\bEAA[0-9A-Za-z]{20,}"),
+    re.compile(r"\bTH[A-Z][0-9A-Za-z_\-]{20,}"),
+    re.compile(r"\bIGQ[0-9A-Za-z_\-]{20,}"),
+]
+
+
+def _scrub(text: str) -> str:
+    for pat in _TOKEN_PATTERNS:
+        text = pat.sub("***TOKEN***", text)
+    return text
 
 
 def load_schedule() -> dict:
@@ -295,6 +329,181 @@ def append_x_post_to_state(clip_id: str, x_post: dict):
     print(f"  → x_post appended: {path.relative_to(ROOT)}", flush=True)
 
 
+# ---------------------------------------------------------------------------
+# Meta (Facebook Page Reels / Instagram Reels / Threads) クロスポスト
+# ---------------------------------------------------------------------------
+
+def _append_meta_failure(clip_id: str, platform: str, error: str, now: datetime):
+    """meta_failure.json の failures[] に追記 (X marker の配列版)。絶対に raise しない。"""
+    try:
+        doc = {"clip_id": clip_id, "at": now.isoformat(), "failures": []}
+        if META_FAILURE_MARKER.exists():
+            try:
+                doc = json.loads(META_FAILURE_MARKER.read_text())
+                doc.setdefault("failures", [])
+            except Exception:
+                pass
+        doc["failures"].append({
+            "platform": platform,
+            "clip_id": clip_id,
+            "error": _scrub(error[-2000:]),
+            "at": now.isoformat(),
+        })
+        META_FAILURE_MARKER.write_text(
+            json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
+    except Exception as e:  # marker 書込み失敗すら exit code を汚さない
+        print(f"  ⚠️ meta_failure marker 書込み失敗: {e}", flush=True)
+
+
+def _threads_video_url(clip_id: str) -> str:
+    """Threads 用の公開動画 URL (Threads はバイナリ不可・URL fetch のみ)。
+
+    GITHUB_SHA 固定 = ① run 中の並行 push / force-push に影響されない
+    ② 投稿後に queue dir が削除されても URL は履歴上の blob として生き続ける
+    (手動再投稿にもそのまま使える)。repo が public であることが前提。
+    """
+    repo = os.environ.get("GITHUB_REPOSITORY", "Knox1784/kakumei-video-pipeline")
+    ref = os.environ.get("GITHUB_SHA") or "main"  # ローカル実行時は main fallback
+    return f"https://raw.githubusercontent.com/{repo}/{ref}/publishing/queue/{quote(clip_id)}/short.mp4"
+
+
+def _meta_texts(meta: dict) -> dict:
+    """platform 毎の本文。fallback chain → title から '#Shorts' 除去 (X と同じ基準)。"""
+    base = meta["title"].replace("#Shorts", "").strip()
+    fb = (meta.get("fb_description") or base).strip()
+    ig = meta.get("ig_caption")
+    if not ig:
+        # IG はハッシュタグ文化 → tags 先頭5個を付与 (Shorts と空白入りは除外)
+        tags = [t for t in meta.get("tags", [])
+                if t and t.lower() != "shorts" and " " not in t][:5]
+        ig = base + ("\n\n" + " ".join(f"#{t}" for t in tags) if tags else "")
+    # Threads はハッシュタグ詰めない (topic tag 1個の文化圏。本文は素のまま)
+    th = (meta.get("threads_text") or base).strip()
+    return {"facebook": fb, "instagram": ig.strip(), "threads": th}
+
+
+def post_to_meta(video_path: Path, meta: dict, now: datetime) -> dict | None:
+    """YouTube 投稿成功後の Meta 3プラットフォームクロスポスト。
+
+    戻り値: {"fb_post": {...}, "ig_post": {...}, "threads_post": {...}} の部分集合 / None (全 skip)。
+    ⚠️ 不変条件: post_to_x と同じく絶対に raise しない。platform 毎に独立 try
+    (FB 失敗が IG/Threads を止めない)。wall-clock deadline 超過分は skipped_deadline 記録
+    (job timeout kill = state 未push = 二重投稿、を防ぐ)。
+    """
+    clip_id = meta.get("clip_id", "?")
+    try:
+        # ゲート 1: マスタースイッチ (デフォルト ON)
+        if not meta.get("meta_enabled", True):
+            print("  ⏭ Meta: meta_enabled=false → skip", flush=True)
+            return None
+        # ゲート 2: public のみ (FB Reels/IG/Threads に限定公開は無い)
+        if meta.get("privacy", "public") != "public":
+            print(f"  ⏭ Meta: privacy={meta.get('privacy')} (≠public) → skip", flush=True)
+            return None
+        # ゲート 3: トークン解決 (不在 = Meta 未セットアップの正常状態 → silent skip)
+        meta_account_id = meta.get("meta_account_id") or meta.get("account_id", "kakumei_ikka")
+        meta_token = META_TOKENS_DIR / f"{meta_account_id}.json"
+        threads_token = THREADS_TOKENS_DIR / f"{meta_account_id}.json"
+        if not meta_token.exists() and not threads_token.exists():
+            if meta.get("meta_account_id"):
+                # meta が明示指定したアカのトークンが無い = 設定ミス疑い → Issue 化
+                msg = f"meta_account_id={meta_account_id} のトークンが無い: {meta_token}"
+                print(f"  ⚠️ Meta: {msg}", flush=True)
+                _append_meta_failure(clip_id, "meta", msg, now)
+                return {"meta_post": {"status": "failed", "error": msg}}
+            print(f"  ⏭ Meta: token not found → skip (Meta 未セットアップ)", flush=True)
+            return None
+
+        # platform 毎の可用性 (token セクション単位の部分セットアップに対応)
+        fb_ok = ig_ok = th_ok = False
+        if meta_token.exists():
+            try:
+                tok = json.loads(meta_token.read_text())
+                fb_ok = bool((tok.get("fb") or {}).get("page_access_token"))
+                ig_ok = fb_ok and bool((tok.get("ig") or {}).get("ig_user_id"))
+            except Exception as e:
+                _append_meta_failure(clip_id, "meta", f"meta token JSON 不正: {e}", now)
+        if threads_token.exists():
+            try:
+                th_tok = json.loads(threads_token.read_text())
+                th_ok = bool(th_tok.get("access_token") and th_tok.get("user_id"))
+            except Exception as e:
+                _append_meta_failure(clip_id, "threads", f"threads token JSON 不正: {e}", now)
+
+        texts = _meta_texts(meta)
+        deadline = time_mod.monotonic() + META_CHAIN_DEADLINE_S
+        plan = [
+            ("facebook", "fb_enabled", "fb_post", fb_ok, meta_token,
+             ["--video", str(video_path)]),
+            ("instagram", "ig_enabled", "ig_post", ig_ok, meta_token,
+             ["--video", str(video_path)]),
+            # URL は meta.json の clip_id ではなく**実際の queue ディレクトリ名**から組み立てる
+            # (乖離していると raw URL が 404 → FAILED_DOWNLOADING_VIDEO になるため)
+            ("threads", "threads_enabled", "threads_post", th_ok, threads_token,
+             ["--video-url", _threads_video_url(video_path.parent.name)]),
+        ]
+        results: dict = {}
+        for platform, gate_key, state_key, available, token_path, src_args in plan:
+            try:
+                if not meta.get(gate_key, True):
+                    print(f"  ⏭ {platform}: {gate_key}=false → skip", flush=True)
+                    continue
+                if not available:
+                    print(f"  ⏭ {platform}: token 未設定 → skip", flush=True)
+                    continue
+                remaining = deadline - time_mod.monotonic()
+                if remaining < 60:
+                    print(f"  ⏭ {platform}: Meta deadline 残 {remaining:.0f}s → skip", flush=True)
+                    results[state_key] = {"status": "skipped_deadline"}
+                    continue
+                budget = int(min(remaining, META_PLATFORM_TIMEOUTS[platform]))
+                cmd = [
+                    sys.executable, str(META_UPLOADER),
+                    "--platform", platform,
+                    *src_args,
+                    "--text", texts[platform],
+                    "--token", str(token_path),
+                    # 内側 deadline は外側 subprocess timeout より十分短く (45s マージン)。
+                    # 不足すると publish 成功**後**に SIGKILL → 成功投稿が「失敗」記録される
+                    "--deadline-s", str(max(budget - 45, 30)),
+                ]
+                print(f"  $ meta-uploader --platform {platform} (budget {budget}s)", flush=True)
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=budget)
+                if r.returncode != 0:
+                    raise RuntimeError(f"meta-uploader {platform} failed: "
+                                       f"{r.stderr.strip()[-2000:]}")
+                result = extract_json_block(r.stdout)
+                print(f"  ✅ {platform} posted: {result.get('url')}", flush=True)
+                results[state_key] = {
+                    **{k: v for k, v in result.items() if k != "platform"},
+                    # text は uploader の result JSON に含まれない (brace カウント対策) ため
+                    # dispatcher 側で記録する
+                    "text": texts[platform],
+                    "posted_at_iso": now.isoformat(),
+                    "account_id": meta_account_id,
+                }
+            except BaseException as e:  # TimeoutExpired 含む。platform 単位で隔離
+                err = _scrub(str(e))
+                print(f"  ❌ {platform} post failed (他 platform は続行): {err[-500:]}", flush=True)
+                _append_meta_failure(clip_id, platform, err, now)
+                results[state_key] = {"status": "failed", "error": err[-2000:]}
+        return results or None
+    except BaseException as e:  # 関数全体の保険 (ゲート/トークン読込での想定外)
+        err = _scrub(str(e))
+        print(f"  ❌ Meta post failed (inner guard): {err[-500:]}", flush=True)
+        _append_meta_failure(clip_id, "meta", err, now)
+        return {"meta_post": {"status": "failed", "error": err[-2000:]}}
+
+
+def append_posts_to_state(clip_id: str, posts: dict):
+    """state JSON に fb_post/ig_post/threads_post 等を一括追記 (read-modify-write 1回)。"""
+    path = STATE_DIR / f"{clip_id}.json"
+    state = json.loads(path.read_text())
+    state.update(posts)
+    path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n")
+    print(f"  → {'/'.join(posts.keys())} appended: {path.relative_to(ROOT)}", flush=True)
+
+
 def write_state(meta: dict, upload_result: dict, now: datetime, slot_str: str | None = None):
     """publishing-state JSON を生成 (= 自動モニター対象化)。
     slot_str: 投稿が紐付くスケジュールスロット (例 "22:00") — already_posted_in_slot の exact match に使用。
@@ -385,6 +594,20 @@ def main():
             append_x_post_to_state(meta["clip_id"], x_post)
         except BaseException as e:
             print(f"  ⚠️ x_post state 追記失敗 (続行): {e}", flush=True)
+
+    # 6c. Meta クロスポスト (FB Reels / IG Reels / Threads) — queue 削除前 = short.mp4 と
+    #     SHA 固定 raw URL がまだ有効なうちに実行。post_to_x と同じ二重ガードで exit 0 死守
+    try:
+        meta_posts = post_to_meta(video_path, meta, now)
+    except BaseException as e:
+        print(f"  ❌ Meta post failed (outer guard): {e}", flush=True)
+        _append_meta_failure(meta.get("clip_id", "?"), "meta", str(e), now)
+        meta_posts = {"meta_post": {"status": "failed", "error": _scrub(str(e))[-2000:]}}
+    if meta_posts:
+        try:
+            append_posts_to_state(meta["clip_id"], meta_posts)
+        except BaseException as e:
+            print(f"  ⚠️ meta posts state 追記失敗 (続行): {e}", flush=True)
 
     shutil.rmtree(target)
     print(f"  → queue dir removed: {target.relative_to(ROOT)}", flush=True)

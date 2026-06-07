@@ -1,0 +1,48 @@
+# =============================================================================
+# Meta (Facebook Page / Instagram / Threads) アカウント台帳
+# =============================================================================
+# ⚠️ ポリシー大原則:
+#   🚫 各プラットフォーム1アカのみ (FB Page / IG / Threads 各1)。複数アカへの
+#      同一/類似コンテンツ自動投稿は CIB (Coordinated Inauthentic Behavior) として
+#      **ネットワーク一括BAN** (X と同じ原則)。100アカ構想は Meta に持ち込まない。
+#   ✅ 自ブランドの FB+IG+Threads 同一コンテンツ展開は公式に明示許可
+#      (2025-07 Meta ポリシー: 罰則対象は「他人の」コンテンツ転載のみ)。
+#   ✅ 自社ロゴ焼き込み OK。⚠️ YouTube から再DLした動画は使わない (ローカルマスター必須)。
+#
+# 新規追加時の手順 (詳細は publishing/SETUP_META.md):
+#   1) FB Page 作成 → IG をプロアカ化して Page に連携 → Threads アカ作成
+#   2) App A 作成 (Business type / use case "Other") — FB+IG 用
+#   3) App B 作成 ("Access the Threads API" use case) — Threads 用
+#      (⚠️ App A に同居不可: Facebook Login use case と非互換・use case は削除不可)
+#   4) python3 external_skills/meta-uploader/scripts/authorize.py --account-id <id>
+#   5) upload.py --verify --platform {facebook,instagram,threads} で3つとも確認
+#   6) gh secret set META_TOKEN_<ID> < publishing/tokens/meta/<id>.json
+#      gh secret set THREADS_TOKEN_<ID> < publishing/tokens/threads/<id>.json
+#   7) .github/workflows/auto_post.yml の Restore Meta tokens に env 2行追加
+#   8) このファイルに1エントリ追記
+# =============================================================================
+
+# 課金: Meta の投稿 API は無料 (X と違い pay-per-use 無し)
+billing: free
+
+accounts:
+  - id: kakumei_ikka
+    meta_token_file: tokens/meta/kakumei_ikka.json        # App A: FB+IG (無期限 Page token)
+    threads_token_file: tokens/threads/kakumei_ikka.json  # App B: Threads (60日・自動 refresh)
+    fb_page: { id: "<SETUP_META.md 実施後に記入>", name: "革命一家", url: "" }
+    instagram: { ig_user_id: "<同上>", handle: "", url: "" }
+    threads: { user_id: "<同上>", handle: "", url: "" }
+    app_a: "<App A 名/ID>"   # Business type。審査不要 (Standard Access・自己資産のみ)
+    app_b: "<App B 名/ID>"   # Threads use case。Threads App ID/Secret は Basic Settings と別物
+    gha_secrets: [META_TOKEN_KAKUMEI_IKKA, THREADS_TOKEN_KAKUMEI_IKKA]
+    pat_secret: GH_PAT_SECRETS   # Threads 自動 refresh の secret 書き戻し用 (Secrets: RW)
+    pat_expires: "<PAT 発行時に記入 — 期限切れ前に再発行してカレンダーへ>"
+    authorized_at: null          # authorize.py 実施日を記入
+    notes: |
+      fb.page_access_token = 無期限 Page token。ただしパスワード変更 / 2FA 変更 /
+      セキュリティチェックポイント / app secret ローテで失効する
+      → upload.py --verify で確認、authorize.py 再実行 + gh secret set で復旧 (2分)。
+      threads.access_token = 60日。auto_post.yml が毎 run チェックし 7日超で自動 refresh +
+      Secret 書き戻し (GH_PAT_SECRETS 必須)。refresh 失敗は Issue (auto-post-failure-meta)。
+      ⚠️ repo を private 化すると Threads の video_url (raw.githubusercontent) が死に
+      Threads 投稿だけ止まる。FB/IG はバイナリ直アップロードのため影響なし。

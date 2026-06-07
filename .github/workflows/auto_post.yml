@@ -31,9 +31,13 @@ permissions:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
-    # X 投稿ハング等の暴走が 23:00 スロットを潰さないための上限
+    # クロスポスト暴走が 23:00 スロットを潰さないための上限
     # (デフォルト 6h だと concurrency group が次スロットの run をブロックし得る)
-    timeout-minutes: 20
+    # 予算概算: setup ~2 + YouTube ~6 + X 5 (300s) + Meta チェーン 12 (deadline 720s)
+    #          + refresh ~0.5 + commit/report ~2 ≈ 27.5 min → 30 に設定。
+    # ⚠️ timeout kill = state 未push = 次 cron で二重投稿。dispatcher 側の
+    #    META_CHAIN_DEADLINE_S がこの上限内に収まるよう必ず同期させること
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -103,6 +107,85 @@ jobs:
             fi
           done
 
+      - name: Restore Meta tokens (best-effort)
+        # 命名規則: META_TOKEN_<ID> → publishing/tokens/meta/<id>.json (App A: FB+IG・無期限 Page token)
+        #          THREADS_TOKEN_<ID> → publishing/tokens/threads/<id>.json (App B: 60日 token)
+        # ⚠️ X と同じく絶対に fail しない (exit 1 禁止) — YouTube/X フロー保護。
+        #    secret 不正時は meta_failure.json の failures[] に追記 → "Report Meta failure" で Issue 化
+        continue-on-error: true
+        env:
+          META_TOKEN_KAKUMEI_IKKA: ${{ secrets.META_TOKEN_KAKUMEI_IKKA }}
+          THREADS_TOKEN_KAKUMEI_IKKA: ${{ secrets.THREADS_TOKEN_KAKUMEI_IKKA }}
+        run: |
+          mkdir -p publishing/tokens/meta publishing/tokens/threads
+          append_marker() {
+            MSG="$1" python3 -c '
+          import json, os, datetime
+          msg = os.environ["MSG"]
+          doc = {"clip_id": None, "at": datetime.datetime.utcnow().isoformat() + "Z", "failures": []}
+          if os.path.exists("meta_failure.json"):
+              try:
+                  doc = json.load(open("meta_failure.json")); doc.setdefault("failures", [])
+              except Exception:
+                  pass
+          doc["failures"].append({"platform": "token_restore", "error": msg})
+          json.dump(doc, open("meta_failure.json", "w"), ensure_ascii=False, indent=2)
+          '
+          }
+          # --- App A (FB+IG) ---
+          for var in $(env | grep -oE '^META_TOKEN_[A-Z0-9_]+' | sort -u); do
+            account=$(echo "${var#META_TOKEN_}" | tr 'A-Z' 'a-z')
+            value=$(printenv "$var" || true)
+            if [ -z "$value" ]; then
+              echo "ℹ️ $var is empty/unset → skip (Meta 未セットアップは正常)"
+              continue
+            fi
+            printf '%s' "$value" > "publishing/tokens/meta/${account}.json"
+            if python3 -c "import json; d=json.load(open('publishing/tokens/meta/${account}.json')); assert d.get('fb',{}).get('page_access_token')" 2>/dev/null; then
+              echo "✅ wrote publishing/tokens/meta/${account}.json"
+            else
+              echo "⚠️ ${account}.json malformed (fb.page_access_token 欠落) — FB/IG 投稿は skip。Secret 再登録が必要"
+              append_marker "META_TOKEN_$(echo "$account" | tr 'a-z' 'A-Z') malformed (gh secret set で再登録)"
+              rm -f "publishing/tokens/meta/${account}.json"
+            fi
+          done
+          # --- App B (Threads) ---
+          for var in $(env | grep -oE '^THREADS_TOKEN_[A-Z0-9_]+' | sort -u); do
+            account=$(echo "${var#THREADS_TOKEN_}" | tr 'A-Z' 'a-z')
+            value=$(printenv "$var" || true)
+            if [ -z "$value" ]; then
+              echo "ℹ️ $var is empty/unset → skip (Threads 未セットアップは正常)"
+              continue
+            fi
+            printf '%s' "$value" > "publishing/tokens/threads/${account}.json"
+            if python3 -c "import json; d=json.load(open('publishing/tokens/threads/${account}.json')); assert d.get('access_token') and d.get('user_id')" 2>/dev/null; then
+              echo "✅ wrote publishing/tokens/threads/${account}.json"
+            else
+              echo "⚠️ ${account}.json malformed (access_token/user_id 欠落) — Threads 投稿は skip。Secret 再登録が必要"
+              append_marker "THREADS_TOKEN_$(echo "$account" | tr 'a-z' 'A-Z') malformed (gh secret set で再登録)"
+              rm -f "publishing/tokens/threads/${account}.json"
+            fi
+          done
+
+      - name: Refresh Threads tokens (best-effort)
+        # threads トークンは 60日失効。refreshed_at が 7日超なら refresh → 新トークンを
+        # Secret に書き戻し (GH_PAT_SECRETS = fine-grained PAT, このリポの Secrets: Read and write)。
+        # ⚠️ Meta の refresh は旧トークンを失効させない → gh secret set が失敗しても
+        #    Secret には有効な旧トークンが残り、次 run で丸ごとリトライされる (トークン喪失ウィンドウ無し)。
+        #    この順序 (refresh 成功 → secret 書込み) を「最適化」で入れ替えないこと。
+        # auto_post.yml 内に置く理由: この repo では GHA schedule 単独の週次 cron は信頼できない
+        # (2026-06-01 に run 完全ドロップ実績)。auto_post は launchd 経由で毎日確実に発火する。
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_SECRETS }}
+        run: |
+          shopt -s nullglob
+          for f in publishing/tokens/threads/*.json; do
+            python3 external_skills/meta-uploader/scripts/refresh_threads_token.py \
+              --token "$f" --max-age-days 7 --update-gh-secret \
+              || echo "⚠️ threads refresh failed for $f (marker 追記済・続行)"
+          done
+
       - name: Dispatch queue
         id: dispatch
         shell: bash
@@ -123,7 +206,14 @@ jobs:
             echo "no changes (no-op tick)"
           else
             git commit -m "auto-post: dispatch queue $(date -u +%FT%TZ)"
-            git push
+            # ⚠️ push 失敗 = state 未反映 = 次 cron で二重投稿 (全プラットフォーム)。
+            #    run 中に人間が queue を push した場合に備え rebase + 3回リトライで確実に乗せる。
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && break
+              echo "⚠️ push 失敗 (attempt $i/3) — 5秒後リトライ"
+              sleep 5
+              [ "$i" = "3" ] && { echo "❌ push 3回失敗 — state 未反映 (二重投稿リスク)"; exit 1; }
+            done
           fi
 
       - name: Report X failure
@@ -167,6 +257,66 @@ jobs:
                 title: '❌ X (Twitter) クロスポスト失敗 — auto-post',
                 body,
                 labels: ['auto-post-failure-x'],
+              });
+            }
+
+      - name: Report Meta failure
+        # meta_failure.json は「YouTube は成功したが Meta (FB/IG/Threads) のどれかが失敗」
+        # または token restore/refresh の失敗時のみ存在する。X と同じく if: failure() では
+        # 発火しないため always() + ファイル存在チェック。failures[] 配列を platform 毎に表示。
+        # サーキットブレーカー: open Issue (label: auto-post-failure-meta) があれば comment 追記。
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('meta_failure.json')) return;
+            let doc = {};
+            try { doc = JSON.parse(fs.readFileSync('meta_failure.json', 'utf8')); } catch (e) {}
+            // 防御的スクラブ (最終出口): producer 側でもスクラブ済みだが、Issue は public のため
+            // 将来の未スクラブ経路への保険として token らしき文字列をここでも置換する
+            const scrub = (s) => String(s)
+              .replace(/access_token=[^&\s"']+/g, '***TOKEN***')
+              .replace(/\bEAA[0-9A-Za-z]{20,}/g, '***TOKEN***')
+              .replace(/\bTH[A-Z][0-9A-Za-z_\-]{20,}/g, '***TOKEN***')
+              .replace(/\bIGQ[0-9A-Za-z_\-]{20,}/g, '***TOKEN***');
+            const failures = doc.failures || [];
+            const lines = failures.map(f =>
+              `- **${f.platform}** (clip: ${f.clip_id || doc.clip_id || '?'}): ${scrub(f.error).slice(0, 500)}`
+            ).join('\n');
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `Workflow run: ${runUrl}`,
+              '',
+              'YouTube / X は影響なし・Meta クロスポストのみ失敗 (自動リトライ無し — queue は消化済み)。',
+              '対応手順: publishing/AUTO_POST_RULES.md の「Meta 投稿が止まった時」参照。',
+              '',
+              '## 失敗内訳',
+              lines || '(詳細なし)',
+              '',
+              '<details><summary>raw marker</summary>',
+              '',
+              '```json',
+              scrub(JSON.stringify(doc, null, 2)).slice(0, 3000),
+              '```',
+              '</details>',
+            ].join('\n');
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'auto-post-failure-meta', state: 'open', per_page: 1,
+            });
+            if (issues.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: `Meta 投稿が再び失敗 (${new Date().toISOString()})\n\n${body}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: '❌ Meta (FB/IG/Threads) クロスポスト失敗 — auto-post',
+                body,
+                labels: ['auto-post-failure-meta'],
               });
             }
 

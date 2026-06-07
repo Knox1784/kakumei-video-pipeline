@@ -6,12 +6,14 @@ GitHub Actions が `publishing/posting_schedule.yaml` で定義されたスロ�
 ## 使い方
 
 1. クリップを作る (今まで通り `compose_v2.py` 等で `short_with_audio.mp4` 完成)
-2. queue にディレクトリを作って配置:
+2. queue に配置 — **`prepare_queue_clip.py` 経由** (音声を全プラットフォーム適合に自動正規化):
    ```bash
-   mkdir publishing/queue/{clip_id}
-   cp source-podcast/edit/shorts_v2/{clip_id}/short_with_audio.mp4 \
-      publishing/queue/{clip_id}/short.mp4
+   python3 publishing/scripts/prepare_queue_clip.py \
+     --src source-podcast/edit/shorts_v2/{clip_id}/short_with_audio.mp4 \
+     --clip-id {clip_id}
    ```
+   (⚠️ 素の cp だと音声 ~200kbps のままになり **IG Reels に確定リジェクト**される。
+   Threads は commit 済み bytes を fetch するため投稿時には直せない → 配置時正規化が必須)
 3. `meta.json` を作成 (下記スキーマ)
 4. `git add publishing/queue/{clip_id}/ && git commit && git push`
 5. 次のスロットで自動投稿される
@@ -62,6 +64,27 @@ YouTube 投稿成功後、同じ short.mp4 が X (@kakumei1784) にも自動投�
 
 - X 投稿は `privacy: "public"` のクリップのみ (X に限定公開は無い)
 - X 失敗しても YouTube 投稿と queue 消化はそのまま成立 (Issue `auto-post-failure-x` で通知・自動リトライ無し)
+
+### Meta クロスポスト用フィールド (全て optional)
+
+YouTube 投稿成功後、同じ short.mp4 が Facebook Page (Reels) / Instagram (Reels) / Threads にも自動投稿される。
+
+| フィールド | デフォルト | 内容 |
+|---|---|---|
+| `meta_enabled` | `true` | `false` で FB/IG/Threads **全て** skip (マスタースイッチ) |
+| `fb_enabled` | `true` | Facebook Reels のみ skip |
+| `ig_enabled` | `true` | Instagram Reels のみ skip |
+| `threads_enabled` | `true` | Threads のみ skip |
+| `meta_account_id` | `account_id` と同値 | `tokens/meta/{id}.json` / `tokens/threads/{id}.json` と一致 |
+| `fb_description` | title から `#Shorts` 除去 | FB Reel の説明文 |
+| `ig_caption` | 同上 + tags 先頭5個をハッシュタグ化 | IG キャプション (2,200字で自動切詰め) |
+| `threads_text` | title から `#Shorts` 除去 | Threads 本文 (500字で自動切詰め。ハッシュタグ詰めない) |
+
+- Meta 投稿も `privacy: "public"` のクリップのみ
+- **失敗は platform 単位で独立** (FB 失敗でも IG/Threads は投稿される)。Issue label は `auto-post-failure-meta`
+- 自動リトライ無し (queue は YouTube 成功時点で消化済み)。手動再投稿は `AUTO_POST_RULES.md` 参照
+- Threads は raw.githubusercontent.com の **GITHUB_SHA 固定 URL** を Meta が fetch する
+  (= **repo が public であることが前提**。FB/IG はバイナリ直アップロードで影響なし)
 
 ## スロット時刻
 
