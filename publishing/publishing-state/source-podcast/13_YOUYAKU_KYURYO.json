@@ -1,0 +1,36 @@
+{
+  "clip_id": "13_YOUYAKU_KYURYO",
+  "title": "これでようやく給料が上がる #Shorts",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "video_id": "8a-5jGCjrq4",
+  "url": "https://youtube.com/shorts/8a-5jGCjrq4",
+  "privacy": "public",
+  "posted_at": "2026-06-07",
+  "made_public_at": "2026-06-07",
+  "posted_at_iso": "2026-06-07T23:17:13.948606+09:00",
+  "posted_slot": "23:00",
+  "source_video": "給料のあげかた.mov",
+  "source_range_summary": null,
+  "duration_s": 13.73,
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "給料の上げ方",
+    "給料",
+    "利益",
+    "出世"
+  ],
+  "experiment_arm": "duration_15to25s_loop_natural_kyuryo",
+  "edit_style": "loop_friendly_tail",
+  "posted_via": "github-actions",
+  "x_post": {
+    "tweet_id": "2063626402126065917",
+    "url": "https://x.com/i/status/2063626402126065917",
+    "text": "これでようやく給料が上がる https://t.co/HKVtmtRHEI",
+    "posted_at_iso": "2026-06-07T23:17:13.948606+09:00",
+    "account_id": "kakumei_ikka"
+  }
+}
