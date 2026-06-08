@@ -65,7 +65,7 @@ YouTube 投稿成功後、同じ short.mp4 が X (@kakumei1784) にも自動投�
 - X 投稿は `privacy: "public"` のクリップのみ (X に限定公開は無い)
 - X 失敗しても YouTube 投稿と queue 消化はそのまま成立 (Issue `auto-post-failure-x` で通知・自動リトライ無し)
 
-### Meta クロスポスト用フィールド (全て optional)
+### Meta クロスポスト用フィールド (全て optional・2026-06-08〜)
 
 YouTube 投稿成功後、同じ short.mp4 が Facebook Page (Reels) / Instagram (Reels) / Threads にも自動投稿される。
 
