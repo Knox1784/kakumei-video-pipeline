@@ -28,17 +28,18 @@ billing: free
 accounts:
   - id: kakumei_ikka
     meta_token_file: tokens/meta/kakumei_ikka.json        # App A: FB+IG (FB ログイン経路)
-    threads_token_file: tokens/threads/kakumei_ikka.json  # App B: Threads (未セットアップ)
+    threads_token_file: tokens/threads/kakumei_ikka.json  # App B: Threads (本番稼働中)
     fb_page: { id: "1156587220871899", name: "ファン 匠瞬一家の切り抜き" }
     instagram: { ig_user_id: "17841413654471535", handle: "@shoma_ikka", url: "https://www.instagram.com/shoma_ikka/" }
-    threads: { user_id: "<未セットアップ>", handle: "", url: "" }
+    threads: { user_id: "27052129904451711", handle: "@shoma_ikka", url: "https://www.threads.com/@shoma_ikka" }
     app_a: "2860281884307669"   # Business・use case「ページのすべてを管理」+「Instagramでメッセージとコンテンツを管理」。審査不要
-    app_b: "<未作成: Threads use case>"
-    gha_secrets: [META_TOKEN_KAKUMEI_IKKA]   # THREADS_TOKEN_* は Threads セットアップ時に追加
-    pat_secret: GH_PAT_SECRETS   # ⚠️ FB+IG では不要。Threads 自動 refresh の secret 書き戻し用 (Secrets: RW)
+    app_b: "995590946777212"    # Threads use case (Threads App ID。Basic Settings の App ID とは別物)。redirect = https://oauth.pstmn.io/v1/callback
+    gha_secrets: [META_TOKEN_KAKUMEI_IKKA, THREADS_TOKEN_KAKUMEI_IKKA]
+    pat_secret: "なし (ユーザー選択で PAT 不使用)"   # ⚠️ FB+IG は元々不要。Threads も PAT 無し運用 (下記)
     authorized_at: 2026-06-08
     scopes: [pages_show_list, pages_read_engagement, pages_manage_posts, read_insights,
              instagram_basic, instagram_content_publish, instagram_manage_insights, business_management]
+    threads_scopes: [threads_basic, threads_content_publish, threads_manage_insights]
     notes: |
       ★ トークン設計 (FB ログイン経路・FB+IG を Page トークン1本で投稿):
         token JSON は **user_access_token (無期限)** を master 鍵として保管。FB/IG 投稿に使う
@@ -53,3 +54,15 @@ accounts:
         ユーザートークン再取得 → fb_exchange_token で無期限化 → gh secret set META_TOKEN_KAKUMEI_IKKA。
         refresh が IG 連携断を検知したら Issue (auto-post-failure-meta) で通知。
       ⚠️ IG はキャプションの API 編集・API 削除ともに不可 (IG アプリから手動)。
+      ★ Threads (App B) のトークン運用 = **PAT 無し方式** (ユーザー選択):
+        Threads は60日トークンが上限 (無期限不可)。PAT を作らない方針のため、GHA の
+        「Refresh Threads tokens」ステップは PAT 未設定を検知して自動更新をスキップし、
+        失効12日前になったら Issue (auto-post-failure-meta) でリマインドする。
+        実際の更新は **Mac のローカル gh** で手動実行 (ローカル gh は Secret 書込み権限あり):
+          python3 external_skills/meta-uploader/scripts/refresh_threads_token.py \
+            --token publishing/tokens/threads/kakumei_ikka.json --force --update-gh-secret
+        → 60日延長 + Secret 書き戻し (再OAuth 不要)。月1回 Claude に「Threads更新して」で済む。
+        万一60日を超えて完全失効したら、SETUP_META の Threads OAuth (redirect=oauth.pstmn.io) を
+        やり直す (App B の redirect callback URL は登録済なので URL を開いて code を貼るだけ)。
+      ⚠️ Threads の動画は repo public 前提 (raw.githubusercontent の SHA固定 URL を Meta が fetch。
+        2026-06-08 実機で octet-stream content-type でも取得成功を確認済 = Pages フォールバック不要)。

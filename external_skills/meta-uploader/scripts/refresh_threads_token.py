@@ -126,6 +126,29 @@ def main():
     else:
         print("🔄 refreshed_at 不明 → refresh 実行", flush=True)
 
+    # PAT 無し運用 (GHA で GH_TOKEN 未設定): Secret に書き戻せない = GHA で refresh しても
+    # 揮発するだけ。refresh をスキップし、失効が近い時だけリマインダ Issue を出す
+    # (実際の更新は Mac のローカル gh / 手動で行う運用。ユーザーが PAT を作らない選択)。
+    if args.update_gh_secret and os.environ.get("GITHUB_ACTIONS") \
+            and not (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")):
+        days_left = None
+        try:
+            days_left = (datetime.fromisoformat(tok["expires_at"]) - now).total_seconds() / 86400
+        except Exception:
+            pass
+        if days_left is not None and days_left <= 12:
+            append_failure_marker(
+                args.failure_marker,
+                f"Threads トークンが残り {days_left:.0f}日で失効。PAT 未設定で GHA 自動更新は無効のため、"
+                f"Mac で手動更新を実行: python3 external_skills/meta-uploader/scripts/"
+                f"refresh_threads_token.py --token {token_path} --force --update-gh-secret",
+                age_days)
+            print(f"⚠️ PAT 未設定 + 残り{days_left:.0f}日 → リマインダ marker 出力", flush=True)
+        else:
+            left = f"残り{days_left:.0f}日" if days_left is not None else "残り不明"
+            print(f"ℹ️ PAT 未設定 → GHA では refresh skip ({left}・Mac/手動運用)", flush=True)
+        return 0
+
     # refresh (client_secret 不要・旧トークンは失効しない)
     try:
         r = requests.get(f"{THREADS_GRAPH}/refresh_access_token", params={
