@@ -27,22 +27,29 @@ billing: free
 
 accounts:
   - id: kakumei_ikka
-    meta_token_file: tokens/meta/kakumei_ikka.json        # App A: FB+IG (無期限 Page token)
-    threads_token_file: tokens/threads/kakumei_ikka.json  # App B: Threads (60日・自動 refresh)
-    fb_page: { id: "<SETUP_META.md 実施後に記入>", name: "革命一家", url: "" }
-    instagram: { ig_user_id: "<同上>", handle: "", url: "" }
-    threads: { user_id: "<同上>", handle: "", url: "" }
-    app_a: "<App A 名/ID>"   # Business type。審査不要 (Standard Access・自己資産のみ)
-    app_b: "<App B 名/ID>"   # Threads use case。Threads App ID/Secret は Basic Settings と別物
-    gha_secrets: [META_TOKEN_KAKUMEI_IKKA, THREADS_TOKEN_KAKUMEI_IKKA]
-    pat_secret: GH_PAT_SECRETS   # Threads 自動 refresh の secret 書き戻し用 (Secrets: RW)
-    pat_expires: "<PAT 発行時に記入 — 期限切れ前に再発行してカレンダーへ>"
-    authorized_at: null          # authorize.py 実施日を記入
+    meta_token_file: tokens/meta/kakumei_ikka.json        # App A: FB+IG (FB ログイン経路)
+    threads_token_file: tokens/threads/kakumei_ikka.json  # App B: Threads (未セットアップ)
+    fb_page: { id: "1156587220871899", name: "ファン 匠瞬一家の切り抜き" }
+    instagram: { ig_user_id: "17841413654471535", handle: "@shoma_ikka", url: "https://www.instagram.com/shoma_ikka/" }
+    threads: { user_id: "<未セットアップ>", handle: "", url: "" }
+    app_a: "2860281884307669"   # Business・use case「ページのすべてを管理」+「Instagramでメッセージとコンテンツを管理」。審査不要
+    app_b: "<未作成: Threads use case>"
+    gha_secrets: [META_TOKEN_KAKUMEI_IKKA]   # THREADS_TOKEN_* は Threads セットアップ時に追加
+    pat_secret: GH_PAT_SECRETS   # ⚠️ FB+IG では不要。Threads 自動 refresh の secret 書き戻し用 (Secrets: RW)
+    authorized_at: 2026-06-08
+    scopes: [pages_show_list, pages_read_engagement, pages_manage_posts, read_insights,
+             instagram_basic, instagram_content_publish, instagram_manage_insights, business_management]
     notes: |
-      fb.page_access_token = 無期限 Page token。ただしパスワード変更 / 2FA 変更 /
-      セキュリティチェックポイント / app secret ローテで失効する
-      → upload.py --verify で確認、authorize.py 再実行 + gh secret set で復旧 (2分)。
-      threads.access_token = 60日。auto_post.yml が毎 run チェックし 7日超で自動 refresh +
-      Secret 書き戻し (GH_PAT_SECRETS 必須)。refresh 失敗は Issue (auto-post-failure-meta)。
-      ⚠️ repo を private 化すると Threads の video_url (raw.githubusercontent) が死に
-      Threads 投稿だけ止まる。FB/IG はバイナリ直アップロードのため影響なし。
+      ★ トークン設計 (FB ログイン経路・FB+IG を Page トークン1本で投稿):
+        token JSON は **user_access_token (無期限)** を master 鍵として保管。FB/IG 投稿に使う
+        fb.page_access_token は未公開アプリだと60日失効するが、auto_post.yml が毎 run
+        refresh_meta_token.py で「無期限ユーザートークン → Page トークン」をその場で再生成する。
+        → **app secret も PAT も再OAuth も不要。ユーザー作業ゼロで永久に動く**。
+        データアクセス90日失効は毎晩の投稿(=使用)で更新され続けるため発動しない。
+      ★ 投稿+分析+コメント権限を banking 済 (read_insights / instagram_manage_insights):
+        後で「Meta版 post-monitor」(リーチ/視聴維持/エンゲージメント収集) を OAuth やり直さず構築可能。
+      ⚠️ 失効トリガ (無期限ユーザートークンが死ぬ稀ケース): FB パスワード変更 / 2FA 変更 /
+        セキュリティチェックポイント / アプリ連携解除。その時のみ Graph API Explorer で
+        ユーザートークン再取得 → fb_exchange_token で無期限化 → gh secret set META_TOKEN_KAKUMEI_IKKA。
+        refresh が IG 連携断を検知したら Issue (auto-post-failure-meta) で通知。
+      ⚠️ IG はキャプションの API 編集・API 削除ともに不可 (IG アプリから手動)。

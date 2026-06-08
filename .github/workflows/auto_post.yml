@@ -195,6 +195,22 @@ jobs:
               || echo "⚠️ threads refresh failed for $f (marker 追記済・続行)"
           done
 
+      - name: Refresh Meta (FB+IG) Page token (per-run・PAT不要)
+        # FB ログイン経路の Page トークンは未公開アプリだと60日失効するが、交換元の
+        # **ユーザートークンは無期限**。それを master 鍵に、毎 run その場で Page トークンを
+        # 再生成して LOCAL のトークンファイルだけ更新する (Secret 書き戻し無し = PAT 不要)。
+        # → app secret 不要・再OAuth 不要・ユーザー作業ゼロで永久に動く。
+        # データアクセス90日失効は毎晩の投稿で更新され続けるため発動しない。
+        # IG 連携が外れた等の異常時のみ meta_failure.json → "Report Meta failure" で Issue 化。
+        continue-on-error: true
+        run: |
+          shopt -s nullglob
+          for f in publishing/tokens/meta/*.json; do
+            python3 external_skills/meta-uploader/scripts/refresh_meta_token.py \
+              --token "$f" --force \
+              || echo "⚠️ meta page token 再生成 failed for $f (marker 追記済・続行)"
+          done
+
       - name: Dispatch queue
         id: dispatch
         shell: bash

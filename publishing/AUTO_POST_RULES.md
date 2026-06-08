@@ -148,9 +148,13 @@ dispatch_queue.py:
 - **wall-clock deadline 720s**: Meta チェーン全体の上限。超過 platform は `skipped_deadline`
   記録 (job timeout kill による state 未push = 二重投稿を構造的に防ぐ)
 - 認証 (2 App 構成・詳細は `meta_accounts.yaml`):
-  - **App A** → `tokens/meta/{id}.json` = FB+IG 共用の**無期限 Page token** (Secret `META_TOKEN_<ID>`)
+  - **App A** → `tokens/meta/{id}.json` = FB+IG (FB ログイン経路・Page token 1本)。token JSON に
+    **無期限ユーザートークン**を master 鍵として保管し、auto_post.yml が**毎 run その場で Page トークンを
+    再生成**する (`refresh_meta_token.py --force`)。**PAT も app secret も再OAuth も不要・ユーザー作業ゼロ**。
+    Secret = `META_TOKEN_<ID>` (Page トークンは再生成するので Secret 書き戻し無し)
   - **App B** → `tokens/threads/{id}.json` = Threads **60日 token** (Secret `THREADS_TOKEN_<ID>`)。
     auto_post.yml が毎 run 鮮度チェック → 7日超で自動 refresh → `GH_PAT_SECRETS` で Secret 書き戻し
+    (⚠️ PAT は Threads にのみ必要)
 - 課金: Meta API は**無料**
 - 🚫 **各プラットフォーム1アカのみ** (CIB 一括BAN リスク。X と同じ原則。100アカ構想は持ち込まない)
 - 動画仕様の要: **音声 ≤128kbps** (IG 上限)。queue 配置は必ず `prepare_queue_clip.py` 経由
@@ -168,6 +172,7 @@ dispatch_queue.py:
 | `2207026` スペック違反 (IG) | 音声 >128kbps 等 | queue 配置が `prepare_queue_clip.py` 経由か確認。`--normalize-existing` で一括修正 |
 | `4`/`17`/`32`/`613`/`2207042` rate limit | FB Reels 30/24h・IG 100/24h・Threads 250/24h | 1日2本運用では通常起きない。テスト撃ちすぎ確認 → 24h 自然回復 |
 | `threads_token_refresh` 失敗 | refresh 失敗 or `GH_PAT_SECRETS` 未設定/期限切れ | PAT 再発行 (fine-grained・このrepo・Secrets: RW) → `gh secret set GH_PAT_SECRETS` → 手動更新: `python3 external_skills/meta-uploader/scripts/refresh_threads_token.py --token publishing/tokens/threads/<id>.json --force --update-gh-secret` |
+| `meta_token_refresh` 失敗 / `IG 連携が確認できない` | 無期限ユーザートークン失効 (パスワード/2FA変更等) or IG↔Page 連携断 | Graph API Explorer でユーザートークン再取得 → `python3 -c` で fb_exchange_token して無期限化 → `gh secret set META_TOKEN_<ID>`。IG連携断なら IG アプリで Page 再連携 |
 | `token_restore` malformed | Secret の中身が壊れている | ローカル token JSON を `--verify` で確認 → `gh secret set` し直す |
 | 🚨 「トークン年齢 50日超」警告 | refresh が止まって failing 状態が放置されている | **60日で完全失効 (再OAuth必須) になる前に** 上記 PAT 行の対処を即実施 |
 
@@ -329,7 +334,8 @@ gh workflow run auto_post.yml --repo Knox1784/kakumei-video-pipeline --ref main
 | `publishing/tokens/x/{account_id}.json` | X OAuth 1.0a 4キー (gitignore。GHA は Secret `X_TOKEN_<ID>` から復元) |
 | `external_skills/meta-uploader/scripts/upload.py` | Meta 投稿実体 (FB Reels 3-phase / IG resumable rupload / Threads URL fetch) |
 | `external_skills/meta-uploader/scripts/authorize.py` | Meta トークン採取 (対話式・ホスティング不要) |
-| `external_skills/meta-uploader/scripts/refresh_threads_token.py` | Threads 60日トークン自動更新 (auto_post.yml が毎 run 実行) |
+| `external_skills/meta-uploader/scripts/refresh_threads_token.py` | Threads 60日トークン自動更新 (auto_post.yml が毎 run 実行・要 PAT) |
+| `external_skills/meta-uploader/scripts/refresh_meta_token.py` | FB+IG Page トークンを無期限ユーザートークンから毎 run 再生成 (PAT 不要) |
 | `publishing/meta_accounts.yaml` | Meta アカウント台帳 (2 App 構成・1アカ限定ポリシー・PAT 期限) |
 | `publishing/tokens/meta/{id}.json` / `tokens/threads/{id}.json` | Meta トークン (gitignore。Secret `META_TOKEN_<ID>` / `THREADS_TOKEN_<ID>` から復元) |
 | `publishing/scripts/prepare_queue_clip.py` | queue 配置 (音声 128kbps 正規化 — IG/Threads 適合の必須経路) |
