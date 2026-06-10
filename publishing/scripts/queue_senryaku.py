@@ -5,8 +5,11 @@
 not_before + target_slot を仕込むので一括 push しても毎日2本ずつ自動公開される。
 主トリガ = launchd com.kakumei.autopost (定刻)、予備 = GHA cron。
 """
-import argparse, json, shutil
+import argparse, json, sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from prepare_queue_clip import normalize  # 音声128k正規化 (IG/Threads適合・素のcp禁止)
 
 ROOT = Path(__file__).resolve().parents[2]
 SHORTS = ROOT / "source-senryaku_2026-06-10/edit/shorts"
@@ -77,7 +80,7 @@ def queue_one(cid):
         print(f"⏸  {cid}: short_final.mp4 not built"); return False
     qd = QUEUE / cid
     qd.mkdir(parents=True, exist_ok=True)
-    shutil.copy(sf, qd / "short.mp4")
+    normalize(sf, qd / "short.mp4")  # IG Reels は >128kbps 音声を確定リジェクトするため必須
     meta = {"clip_id": cid, **COMMON, **CLIP_META[cid]}
     (qd / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     m = CLIP_META[cid]
