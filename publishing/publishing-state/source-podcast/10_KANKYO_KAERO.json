@@ -27,7 +27,11 @@
   "edit_style": "loop_friendly_tail",
   "posted_via": "github-actions",
   "x_post": {
-    "status": "failed",
-    "error": "x-uploader failed: Traceback (most recent call last):\n  File \"/home/runner/work/kakumei-video-pipeline/kakumei-video-pipeline/external_skills/x-uploader/scripts/upload.py\", line 420, in <module>\n    main()\n  File \"/home/runner/work/kakumei-video-pipeline/kakumei-video-pipeline/external_skills/x-uploader/scripts/upload.py\", line 400, in main\n    upload_path, is_tmp = prepare_video(video_path)\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/kakumei-video-pipeline/kakumei-video-pipeline/external_skills/x-uploader/scripts/upload.py\", line 150, in prepare_video\n    info = probe_video(path)\n           ^^^^^^^^^^^^^^^^^\n  File \"/home/runner/work/kakumei-video-pipeline/kakumei-video-pipeline/external_skills/x-uploader/scripts/upload.py\", line 125, in probe_video\n    r = subprocess.run(\n        ^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'ffprobe'"
+    "tweet_id": "2064612352247595427",
+    "url": "https://x.com/i/status/2064612352247595427",
+    "text": "やり切って無理なら、環境を変えろ",
+    "posted_at_iso": "2026-06-10T16:36:31.304862+09:00",
+    "account_id": "kakumei_ikka",
+    "note": "手動再投稿 (2026-06-06 ffmpeg不在で失敗→2026-06-10 復旧)"
   }
 }
