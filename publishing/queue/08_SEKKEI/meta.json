@@ -1,0 +1,25 @@
+{
+  "clip_id": "08_SEKKEI",
+  "account_id": "kakumei_ikka",
+  "privacy": "public",
+  "source_video": "戦略ごっこをするな.MOV",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "experiment_arm": "duration_15to25s_loop_natural_senryaku",
+  "edit_style": "loop_friendly_tail",
+  "title": "設計5%・行動95% #Shorts",
+  "description": "リソースのないお前は設計5%・行動95%。考えすぎて動けないのが一番のゴミ。\n#戦略ごっこをするな #未来の総理大臣 #因幡匠瞬 #革命一家",
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "戦略ごっこをするな",
+    "戦略",
+    "行動",
+    "若者"
+  ],
+  "duration_s": 19.9,
+  "not_before": "2026-06-13T23:00:00+09:00",
+  "target_slot": "23:00"
+}
