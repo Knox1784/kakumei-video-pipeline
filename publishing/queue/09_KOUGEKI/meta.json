@@ -1,0 +1,25 @@
+{
+  "clip_id": "09_KOUGEKI",
+  "account_id": "kakumei_ikka",
+  "privacy": "public",
+  "source_video": "あなたのバリューは何か.MOV",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "experiment_arm": "duration_15to25s_loop_natural_value",
+  "edit_style": "loop_friendly_tail",
+  "title": "攻撃が最大の防御 #Shorts",
+  "description": "保守的すぎる。攻撃が最大の防御。守りを固めるより、攻撃してチャレンジし続けろ。\n#あなたのバリューは何か #未来の総理大臣 #因幡匠瞬 #革命一家",
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "バリュー",
+    "挑戦",
+    "マインド",
+    "攻め"
+  ],
+  "duration_s": 13.5,
+  "not_before": "2026-06-20T22:00:00+09:00",
+  "target_slot": "22:00"
+}

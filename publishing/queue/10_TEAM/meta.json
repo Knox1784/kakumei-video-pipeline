@@ -1,0 +1,25 @@
+{
+  "clip_id": "10_TEAM",
+  "account_id": "kakumei_ikka",
+  "privacy": "public",
+  "source_video": "あなたのバリューは何か.MOV",
+  "channel": "革命一家",
+  "channel_id": "UCLFDso06pqOYLnXfv5-jDsQ",
+  "experiment_arm": "duration_15to25s_loop_natural_value",
+  "edit_style": "loop_friendly_tail",
+  "title": "仲間がいるから飛び込める #Shorts",
+  "description": "チームといる時が一番攻撃力が高い。ルフィも料理は作れない。仲間がいるからトップのバリューを出せる。\n#あなたのバリューは何か #未来の総理大臣 #因幡匠瞬 #革命一家",
+  "tags": [
+    "Shorts",
+    "革命一家",
+    "因幡匠瞬",
+    "未来の総理大臣",
+    "バリュー",
+    "仲間",
+    "チーム",
+    "リーダー"
+  ],
+  "duration_s": 18.4,
+  "not_before": "2026-06-20T23:00:00+09:00",
+  "target_slot": "23:00"
+}
